@@ -1,0 +1,8 @@
+# Output files
+docs/
+logs/
+terrain/
+eeprom.bin
+mav.parm
+mav.tlog
+mav.tlog.raw

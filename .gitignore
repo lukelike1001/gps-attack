@@ -2,6 +2,11 @@
 docs/
 logs/
 terrain/
+
+# QGroundControl (can't redistribute)
+QGroundControl-x86_64.AppImage
+
+# Temporary SITL/MAVProxy runtime artifacts
 eeprom.bin
 mav.parm
 mav.tlog

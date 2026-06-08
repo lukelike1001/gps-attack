@@ -1,0 +1,15 @@
+connection:
+  address: "udp:127.0.0.1:14551"
+  heartbeat_timeout_seconds: 30
+
+injection:
+  rate_hz: 5
+  duration_seconds: 120
+
+attack:
+  type: "replay"         # passthrough | replay | drift
+  lat: -35.360261        # ~330m north of home — outside the 200m geofence radius
+  lon: 149.16523
+  alt: 30.0
+  rate_lat: 1.0e-5
+  rate_lon: 1.0e-5

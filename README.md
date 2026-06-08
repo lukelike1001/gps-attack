@@ -36,9 +36,9 @@ gps-attack/
 
 ## Local Quickstart (recommended for development)
 
-Tested on Ubuntu 22.04. All commands run from the repo root unless noted.
+Tested on Ubuntu 22.04. All commands run from the repo root unless noted. You only need to run these steps once to c
 
-### 1. Clone and build ArduPilot SITL
+### Step 1: Clone and build ArduPilot SITL
 
 Clone ArduPilot to `~/ardupilot`, outside this repo so its lifecycle stays independent.
 
@@ -73,7 +73,7 @@ which sim_vehicle.py
 which mavproxy.py
 ```
 
-### 2. Install Python dependencies
+### Step 2: Install Python dependencies
 
 From the repo root (not the ardupilot directory):
 
@@ -83,7 +83,7 @@ pip3 install -r requirements.txt --break-system-packages
 
 Dependencies: `pymavlink`, `pyyaml`, `matplotlib`, `numpy`.
 
-### 3. Install QGroundControl
+### Step 3: Install QGroundControl
 
 Download the latest AppImage from the
 [QGroundControl daily builds](https://docs.qgroundcontrol.com/master/en/qgc-user-guide/getting_started/download_and_install.html)
@@ -93,6 +93,8 @@ page, then make it executable:
 chmod +x QGroundControl-x86_64.AppImage
 ./QGroundControl-x86_64.AppImage
 ```
+
+After opening QGroundControl and verifying that the GUI loads, you can close it for now.
 
 ### Removing the local setup
 
@@ -112,13 +114,11 @@ fi
 
 ---
 
-## AUTO-01 — Clean waypoint mission
+## AUTO-01: Clean waypoint mission
 
-### 4. Start SITL
+### Step 1: Start SITL
 
-Open a dedicated terminal in the repo root. `sim_vehicle.py` is an executable installed
-on your PATH by the prereqs script. Do not prefix it with `python`. SITL binds two
-MAVLink outputs: UDP 14550 for QGroundControl, UDP 14551 for the Python scripts.
+Open a dedicated terminal in the repo root. `sim_vehicle.py` is an executable installed on your PATH by the prereqs script. Do not prefix it with `python`. SITL binds two MAVLink outputs: UDP 14550 for QGroundControl, UDP 14551 for the Python scripts.
 
 ```bash
 sim_vehicle.py -v ArduCopter \
@@ -126,11 +126,10 @@ sim_vehicle.py -v ArduCopter \
     --out udp:127.0.0.1:14551
 ```
 
-Wait until the console prints `APM: EKF3 IMU0 is using GPS` before proceeding — the
-simulated GPS fix is required for arming. The vehicle spawns near Canberra, Australia
+**CRITICAL STEP**: Wait until the console prints `APM: EKF3 IMU0 is using GPS` before proceeding, because the simulated GPS fix is required for arming. The vehicle spawns near Canberra, Australia
 (-35.36°, 149.17°).
 
-### 5. Apply baseline parameters
+### Step 2: Apply baseline parameters
 
 In a second terminal:
 
@@ -138,53 +137,102 @@ In a second terminal:
 python3 sim/configure_sitl.py --mode baseline
 ```
 
-This enables a 200 m inclusion geofence with RTL on breach. All parameter values are
-defined in `sim/sitl_params.yaml`.
+This enables a 200m inclusion geofence with RTL on breach. All parameter values are defined in `sim/sitl_params.yaml`.
 
-### 6. Load the waypoint mission
+### Step 3: Load the waypoint mission
 
-1. Open QGroundControl. It auto-connects to SITL on UDP 14550.
+1. Open QGroundControl by running `./QGroundControl-x86_64.AppImage`. It auto-connects to SITL on UDP 14550.
 2. Go to **Plan** view.
 3. Click the file icon → **Open** → select `sim/baseline_waypoints.plan`.
 4. Click **Upload** to send the mission and geofence to SITL.
 
-### 7. Arm and fly
+### Step 4: Arm and fly
 
-In QGroundControl **Fly** view, slider-arm the vehicle and click **Start Mission**.
+In QGroundControl **Fly** view, hold the **Start Mission** slider-arm button.
 
-Expected: drone takes off to 30 m, flies a four-waypoint square (~100 m sides), RTLs
-home. No fence breach alert fires.
+**Expected:** drone takes off to 30 m, flies a four-waypoint square (~100 m sides), RTLs home. No fence breach alert fires.
 
-### 8. Retrieve the .bin log
+### Step 5: Retrieve the .bin log
 
-ArduPilot SITL writes `.bin` DataFlash logs to the `logs/` subdirectory of wherever
-`sim_vehicle.py` was launched. After landing:
+ArduPilot SITL writes `.bin` DataFlash logs to the `logs/` subdirectory of wherever `sim_vehicle.py` was launched. After landing:
 
 ```bash
 ls -lt logs/*.BIN | head -3
 cp $(ls -t logs/*.BIN | head -1) logs/baseline_flight.bin
 ```
 
-AUTO-01 is complete when `logs/baseline_flight.bin` exists and the QGroundControl map
-shows a clean rectangular path with no geofence breach.
+AUTO-01 is complete when `logs/baseline_flight.bin` exists and the QGroundControl map shows a clean rectangular path with no geofence breach.
 
 ---
 
-## REPLAY-01 — GPS spoofing mid-flight
+## REPLAY-01: GPS spoofing mid-flight
 
-> **Do not proceed until AUTO-01 passes.**
+> **Warning: You should not run this code until AUTO-01 passes.**
 
-Apply attack parameters (adds `GPS1_TYPE=14`, `GPS_AUTO_SWITCH=0`, `EK3_GPS_TYPE=3`):
+Next, we will modify the baseline flight to perform GPS spoofing mid=flight. We will apply the following attack parameters (adds `GPS1_TYPE=14` and `GPS_AUTO_SWITCH=0`) in this demo.
+
+### Step 1: Run the SITL
+
+Boot up the SITL using the same script provided in AUTO-01. If you just finished running Step 5 in AUTO-01 and have not ended the `sim_vehicle.py` session, then you do not need to run this script again.
+
+```bash
+sim_vehicle.py -v ArduCopter \
+    --out udp:127.0.0.1:14550 \
+    --out udp:127.0.0.1:14551
+```
+
+### Step 2: Enter GPS spoofing attack mode
+
+In a new terminal, you should run the following script to switch from the `baseline` to `attack` mode.
 
 ```bash
 python3 sim/configure_sitl.py --mode attack
 ```
 
-Reboot SITL (type `reboot` in the SITL console), then run the GPS hook:
+By this point, you should have Terminal 1 running `sim_vehicle.py` and Terminal 2 running this `configure.sitl.py` file.
+
+### Step 3: Reboot SITL
+
+Type `reboot` in the Terminal 1 (the SITL console). Then, move to Terminal 2 and run the GPS hook:
 
 ```bash
 python3 attack/gps_hook.py
 ```
+
+### Step 4: Observe via QGroundControl
+
+Run QGroundControl to observe the GPS spoofing flight. If you have already opened QGroundControl and haven't closed it since AUTO-01, you do not need to re-open it.
+
+```bash
+./QGroundControl-x86_64.AppImage
+```
+
+### Step 5: Save the spoofed log
+
+Similar to AUTO-01, the spoofed flight has already been saved, but you can rename it for readability.
+
+```bash
+ls -lt logs/*.BIN | head -3
+cp $(ls -t logs/*.BIN | head -1) logs/spoofed_flight.bin
+```
+
+### Optional: Cleaning Persistent ArduPilot Parameters
+ArduPilot persists parameters across launches via `eeprom.bin` in the launch directory. `--mode baseline` only re-applies the fence parameters, and it does **not** reset the GPS-related parameters set by `--mode attack` (`GPS1_TYPE`, `GPS_AUTO_SWITCH`, `EK3_GPS_TYPE`).
+
+To fix the `PreArm: GPS 1: Bad fix` / `Fence requires position` error, run this script in Terminal 2:
+
+```bash
+python3 sim/configure_sitl.py --mode baseline
+```
+
+Then, run this script in Terminal 1 (in the `sim_vehicle.py` input):
+```
+param set GPS1_TYPE 1
+param set GPS_AUTO_SWITCH 1
+reboot
+```
+
+Wait for `APM: EKF3 IMU0 is using GPS` to reappear before arming.
 
 ---
 

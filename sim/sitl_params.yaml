@@ -1,18 +1,20 @@
-connection:
+connection_params:
   address: "udp:127.0.0.1:14551"
   heartbeat_timeout_seconds: 30
 
-parameters:
+mavlink_params:
   ack_timeout_seconds: 5
   max_retries: 3
 
-baseline_params:
+# Fence Docs: https://ardupilot.org/copter/docs/parameters.html#fence-parameters
+fence_params:
   FENCE_ENABLE: 1
   FENCE_TYPE: 2
-  FENCE_RADIUS: 200
   FENCE_ACTION: 1
   FENCE_MARGIN: 2
 
-attack_params:
+# Setting GPS1_TYPE = 14 switches from ArduPilot's internal simulated GPS to an external MAVLink GPS
+# Setting GPS_AUTO_SWITCH = 0 locks the flight controller to the MAVLink source
+gps_input_params:
   GPS1_TYPE: 14
   GPS_AUTO_SWITCH: 0

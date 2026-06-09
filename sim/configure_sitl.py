@@ -2,8 +2,8 @@
 Configure ArduPilot SITL parameters for the GPS spoofing experiment.
 
 Two modes:
-  baseline  — geofence on, internal GPS (run before the clean flight)
-  attack    — geofence on plus GPS1_TYPE=14 and EK3 tuning so MAVLink
+  baseline  — enables the geofence (run before the clean flight)
+  attack    — geofence on plus GPS1_TYPE=14 and GPS_AUTO_SWITCH=0 so MAVLink
                GPS_INPUT messages are accepted (run once before the spoofed
                flight; injection itself is handled by attack/gps_hook.py)
 
@@ -40,8 +40,8 @@ class Config:
     heartbeat_timeout_seconds: int
     param_ack_timeout_seconds: int
     param_max_retries: int
-    baseline_params: Mapping[str, float]
-    attack_params: Mapping[str, float]
+    fence_params: Mapping[str, float]
+    gps_input_params: Mapping[str, float]
 
     @classmethod
     def from_yaml(cls, path: Path = CONFIG_PATH) -> Config:
@@ -57,12 +57,12 @@ class Config:
         with path.open() as file:
             data = yaml.safe_load(file)
         return cls(
-            connection_address=data["connection"]["address"],
-            heartbeat_timeout_seconds=data["connection"]["heartbeat_timeout_seconds"],
-            param_ack_timeout_seconds=data["parameters"]["ack_timeout_seconds"],
-            param_max_retries=data["parameters"]["max_retries"],
-            baseline_params=MappingProxyType(data["baseline_params"]),
-            attack_params=MappingProxyType(data["attack_params"]),
+            connection_address=data["connection_params"]["address"],
+            heartbeat_timeout_seconds=data["connection_params"]["heartbeat_timeout_seconds"],
+            param_ack_timeout_seconds=data["mavlink_params"]["ack_timeout_seconds"],
+            param_max_retries=data["mavlink_params"]["max_retries"],
+            fence_params=MappingProxyType(data["fence_params"]),
+            gps_input_params=MappingProxyType(data["gps_input_params"]),
         )
 
 
@@ -175,9 +175,9 @@ def run(mode: str) -> None:
     config = Config.from_yaml()
 
     params = (
-        config.baseline_params
+        config.fence_params
         if mode == "baseline"
-        else {**config.baseline_params, **config.attack_params}
+        else {**config.fence_params, **config.gps_input_params}
     )
 
     connection = SitlConnection(config)

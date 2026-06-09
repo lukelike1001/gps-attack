@@ -18,8 +18,10 @@ gps-attack/
 │   ├── Dockerfile              Two-stage build: SITL builder → lightweight runtime
 │   ├── entrypoint.sh           Starts sim_vehicle.py with env-derived port flags
 │   └── docker.env              All tunable Docker values (branch, ports)
+├── plans/
+│   ├── canberra.plan           QGroundControl waypoint mission + geofence (Canberra, AU)
+│   └── ornl.plan               QGroundControl waypoint mission + geofence (ORNL, TN)
 ├── sim/
-│   ├── baseline_waypoints.plan QGroundControl waypoint mission + geofence
 │   ├── sitl_params.yaml        Tunable SITL connection and parameter values
 │   └── configure_sitl.py       Sets ArduPilot SITL parameters via MAVLink
 ├── attack/
@@ -48,8 +50,7 @@ cd ~/ardupilot
 Tools/environment_install/install-prereqs-ubuntu.sh -y
 ```
 
-`sim_vehicle.py` and `mavproxy.py` need to be on `PATH`. Rather than scattering exports
-through `~/.bashrc`, keep them in one dedicated profile and source it from `~/.bashrc`:
+`sim_vehicle.py` and `mavproxy.py` need to be on `PATH`. Rather than scattering exports through `~/.bashrc`, keep them in one dedicated profile and source it from `~/.bashrc`:
 
 ```bash
 cat > ~/.ardupilot_profile << 'EOF'
@@ -122,12 +123,15 @@ Open a dedicated terminal in the repo root. `sim_vehicle.py` is an executable in
 
 ```bash
 sim_vehicle.py -v ArduCopter \
+    --custom-location=35.93051398,-84.31067453,50,0 \
     --out udp:127.0.0.1:14550 \
     --out udp:127.0.0.1:14551
 ```
 
-**CRITICAL STEP**: Wait until the console prints `APM: EKF3 IMU0 is using GPS` before proceeding, because the simulated GPS fix is required for arming. The vehicle spawns near Canberra, Australia
-(-35.36°, 149.17°).
+You should see a new `ArduCopter` window pop up.
+<p align="center">
+    <img src="icons/arducopter.png" alt="ArduCopter Window" width="400">
+</p>
 
 ### Step 2: Apply baseline parameters
 
@@ -137,35 +141,70 @@ In a second terminal:
 python3 sim/configure_sitl.py --mode baseline
 ```
 
-This enables a 200m inclusion geofence with RTL on breach. All parameter values are defined in `sim/sitl_params.yaml`.
+This enables fence behaviour (RTL on breach) via `sim/sitl_params.yaml`. The geofence geometry is defined in the plan file and uploaded later.
 
-### Step 3: Load the waypoint mission
+### Step 3: Reboot SITL
 
-1. Open QGroundControl by running `./QGroundControl-x86_64.AppImage`. It auto-connects to SITL on UDP 14550.
-2. Go to **Plan** view.
-3. Click the file icon → **Open** → select `sim/baseline_waypoints.plan`.
-4. Click **Upload** to send the mission and geofence to SITL.
+In the first terminal where you ran `sim_vehicle.py`, type the reboot script.
 
-### Step 4: Arm and fly
+```bash
+reboot
+```
+
+<p align="center">
+    <img src="icons/reboot.png" alt="Reboot" width="400">
+</p>
+
+Any time you edit [ArduPilot's GPS parameters](https://ardupilot.org/copter/docs/parameters.html#gps-parameters) (e.g., `GPS1_TYPE`, `GPS_AUTO_SWITCH`), you need to reboot `sim_vehicle.py` for the edits to take place.
+
+### Step 4: Open QGroundControl
+
+If you have not done so already, open QGroundControl (not in Terminal 1).
+
+```bash
+./QGroundControl-x86_64.AppImage
+```
+
+It auto-connects to SITL on UDP 14550.
+
+### Step 5: Configure QGroundControl.
+
+Inside QGroundControl, use the GUI and apply the following steps:
+
+a. <img src="icons/qgroundcontrol_plan.png" alt="Plan" width="100"> Go to **Plan** view. (Click the "Q" icon in the top-left corner for the drop-down.)
+
+b. <img src="icons/qgroundcontrol_open.png" alt="Open" width="100"> Click the file icon → **Open** → select `plans/ornl.plan`
+
+c. <img src="icons/qgroundcontrol_upload.png" alt="Upload" width="100"> Click **Upload** to send the mission and geofence to SITL.
+
+### Step 6: Arm and fly
+
+**CRITICAL STEP**: Wait until the console prints `APM: EKF3 IMU0 is using GPS` before proceeding, because the simulated GPS fix is required for arming. The vehicle spawns near Oak Ridge, TN (35.93°, -84.31°).
 
 In QGroundControl **Fly** view, hold the **Start Mission** slider-arm button.
 
-**Expected:** drone takes off to 30 m, flies a four-waypoint square (~100 m sides), RTLs home. No fence breach alert fires.
+![ORNL Arm and Fly](icons/ornl_arm_and_fly.png)
 
-### Step 5: Retrieve the .bin log
+**Expected:** drone takes off to 50m, flies to all waypoints, then RTLs home. No fence breach alert fires.
+
+### Step 7: Retrieve the .bin log
+
+Wait for the flight to finish in QGroundControl.
+
+![ORNL Finished Flight](icons/ornl_finished_flight.png)
 
 ArduPilot SITL writes `.bin` DataFlash logs to the `logs/` subdirectory of wherever `sim_vehicle.py` was launched. After landing:
 
 ```bash
 ls -lt logs/*.BIN | head -3
-cp $(ls -t logs/*.BIN | head -1) logs/baseline_flight.bin
+cp $(ls -t logs/*.BIN | head -1) logs/ornl/baseline_flight.bin
 ```
 
-AUTO-01 is complete when `logs/baseline_flight.bin` exists and the QGroundControl map shows a clean rectangular path with no geofence breach.
+AUTO-01 is complete when `logs/ornl/baseline_flight.bin` exists and the QGroundControl map shows a clean rectangular path with no geofence breach.
 
 ---
 
-## REPLAY-01: GPS spoofing mid-flight
+## STATIC-01: GPS spoofing mid-flight
 
 > **Warning: You should not run this code until AUTO-01 passes.**
 
@@ -215,24 +254,6 @@ Similar to AUTO-01, the spoofed flight has already been saved, but you can renam
 ls -lt logs/*.BIN | head -3
 cp $(ls -t logs/*.BIN | head -1) logs/spoofed_flight.bin
 ```
-
-### Optional: Cleaning Persistent ArduPilot Parameters
-ArduPilot persists parameters across launches via `eeprom.bin` in the launch directory. `--mode baseline` only re-applies the fence parameters, and it does **not** reset the GPS-related parameters set by `--mode attack` (`GPS1_TYPE`, `GPS_AUTO_SWITCH`, `EK3_GPS_TYPE`).
-
-To fix the `PreArm: GPS 1: Bad fix` / `Fence requires position` error, run this script in Terminal 2:
-
-```bash
-python3 sim/configure_sitl.py --mode baseline
-```
-
-Then, run this script in Terminal 1 (in the `sim_vehicle.py` input):
-```
-param set GPS1_TYPE 1
-param set GPS_AUTO_SWITCH 1
-reboot
-```
-
-Wait for `APM: EKF3 IMU0 is using GPS` to reappear before arming.
 
 ---
 

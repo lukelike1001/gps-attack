@@ -2,10 +2,10 @@
 
 # Reverting Ardupilot Back to Normal (Removing Persisted Parameters)
 
-tl;dr Delete these four run artifacts to remove any persisted parameters from past runs:
+tl;dr Run this easy-to-use script to delete Ardupilot run artifacts:
 
 ```bash
-rm -f eeprom.bin mav.parm mav.tlog mav.tlog.raw
+./clear_persistent.sh
 ```
 
 A longer explanation for reverting Ardupilot is provided below.

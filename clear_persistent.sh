@@ -1,0 +1,1 @@
+rm -f eeprom.bin mav.parm mav.tlog mav.tlog.raw

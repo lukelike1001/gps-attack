@@ -65,6 +65,9 @@ class Config:
     gps_input_rate_hz: float
     attack_delay_seconds: float
     flight_duration_seconds: float
+    home_lat: float
+    home_lon: float
+    home_alt: float
     attack: GpsAttack
 
     @classmethod
@@ -86,6 +89,9 @@ class Config:
             gps_input_rate_hz=data["injection_params"]["gps_input_rate_hz"],
             attack_delay_seconds=data["injection_params"]["attack_delay_seconds"],
             flight_duration_seconds=data["injection_params"]["flight_duration_seconds"],
+            home_lat=data["home_position"]["lat"],
+            home_lon=data["home_position"]["lon"],
+            home_alt=data["home_position"]["alt"],
             attack=GpsAttack(**data["attack_params"]),
         )
 
@@ -176,6 +182,18 @@ class GpsSpoofer:
         start_time = time.monotonic()
         elapsed_seconds = 0.0
 
+        # Seed with the vehicle's real starting position so the first
+        # GPS_INPUT (sent before any GLOBAL_POSITION_INT arrives) gives the
+        # EKF a sane origin instead of "Null Island" (0, 0).
+        self._last_position = VehiclePosition(
+            lat=self._config.home_lat,
+            lon=self._config.home_lon,
+            alt=self._config.home_alt,
+            velocity_north=0.0,
+            velocity_east=0.0,
+            velocity_down=0.0,
+        )
+
         logger.info(
             "Starting '%s' GPS spoof — passthrough for %.0fs, then attack for %.0fs at %.1f Hz",
             attack.type,
@@ -239,6 +257,10 @@ class GpsSpoofer:
         """
         msg = self._connection.mav.recv_match(type="GLOBAL_POSITION_INT", blocking=False)
         if msg is None:
+            return None
+        if msg.lat == 0 and msg.lon == 0:
+            # "Null Island" — the EKF hasn't ingested a GPS fix yet and has
+            # no origin set, so GLOBAL_POSITION_INT reports (0, 0).
             return None
         return VehiclePosition(
             lat=msg.lat / 1e7,

@@ -4,8 +4,13 @@ connection:
 
 injection_params:
   gps_input_rate_hz: 5
-  attack_delay_seconds: 0
+  attack_delay_seconds: 50
   flight_duration_seconds: 240
+
+home_position:               # matches sim_vehicle.py --custom-location for ORNL
+  lat: 35.93051398
+  lon: -84.31067453
+  alt: 50.0
 
 attack_params:
   type: "fabric"         # passthrough | fabric | drift

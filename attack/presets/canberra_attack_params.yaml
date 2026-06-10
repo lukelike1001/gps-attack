@@ -7,6 +7,11 @@ injection_params:
   attack_delay_seconds: 50
   flight_duration_seconds: 240
 
+home_position:               # matches sim_vehicle.py --custom-location for Canberra
+  lat: -35.363261
+  lon: 149.16523
+  alt: 584.0
+
 attack_params:
   type: "fabric"         # passthrough | fabric | drift
   fabric_lat: -35.360261 # you should select a value outside the geofence radius for a static attack

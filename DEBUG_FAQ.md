@@ -40,9 +40,9 @@ sim_vehicle.py -v ArduCopter \
 
 Wait for the `EKF3 IMU0 is using GPS` message. Then, open QGroundControl, go to Plan, and open whatever `.plan` file you would like. There should be no persisted gps-attack parameters by this point.
 
-# Setting the Drone to Oak Ridge, TN
+# ArduPilot Custom Location Formatting
 
-If you are testing using only software (rather than a real drone), then the Oak Ridge `.plan` files assume that  the drone location is the following:
+Take the following ArduPilot script as an example:
 
 ```bash
 sim_vehicle.py -v ArduCopter \
@@ -51,4 +51,21 @@ sim_vehicle.py -v ArduCopter \
     --out udp:127.0.0.1:14551
 ```
 
-Furthermore, the ORNL Conference Parking Lot coordinates are (35.93323230241756, -84.31181199768014). The altitude is set at 50 meters. This is used for the GPS `replay` spoofing attack.
+Let's break down how the `custom-location` structure works.
+
+```
+--custom-location=35.93051398,-84.31067453, 50,     0
+                  └────┬─────┘└─────┬──────┘└┬┘  └──┬──┘
+                   latitude    longitude    alt  heading
+
+```
+
+1. **Latitude:** degrees, decimal format (35.93°N)
+2. **Longitude:** degrees, decimal format (-84.31°W)
+3. **Altitude:** meters above sea level (MSL), where the vehicle spawns
+4. **Heading:** degrees, compass heading the vehicle faces at spawn (0 = North)
+
+
+Therefore, in this example, the Oak Ridge National Lab coordinates are (35.93°N, -84.31°W), with an altitude set to 50m and a heading of 0°.
+
+

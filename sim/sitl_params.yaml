@@ -10,11 +10,22 @@ mavlink_params:
 fence_params:
   FENCE_ENABLE: 1
   FENCE_TYPE: 2
+  FENCE_RADIUS: 200
   FENCE_ACTION: 1
   FENCE_MARGIN: 2
 
-# Setting GPS1_TYPE = 14 switches from ArduPilot's internal simulated GPS to an external MAVLink GPS
+nav_params:
+  WPNAV_SPEED_UP: 400
+  WPNAV_SPEED_DN: 250
+
+# GPS Docs: https://ardupilot.org/copter/docs/parameters.html#gps-parameters
+# GPS1_TYPE = 1 (AUTO) uses ArduPilot's internal simulated GPS (default)
+gps_baseline_params:
+  GPS1_TYPE: 1
+  GPS_AUTO_SWITCH: 1
+
+# GPS1_TYPE = 14 (MAVLink) accepts external GPS_INPUT messages for spoofing
 # Setting GPS_AUTO_SWITCH = 0 locks the flight controller to the MAVLink source
-gps_input_params:
+gps_attack_params:
   GPS1_TYPE: 14
   GPS_AUTO_SWITCH: 0

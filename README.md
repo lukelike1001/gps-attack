@@ -133,6 +133,8 @@ You should see a new `ArduCopter` window pop up.
     <img src="icons/arducopter.png" alt="ArduCopter Window" width="400">
 </p>
 
+**NOTE:** For questions about how ArduPilot formats `custom-location`, see [DEBUG_FAQ.md](DEBUG_FAQ.md#ardupilot-custom-location-formatting).
+
 ### Step 2: Apply baseline parameters
 
 In a second terminal:
@@ -196,6 +198,7 @@ Wait for the flight to finish in QGroundControl.
 ArduPilot SITL writes `.bin` DataFlash logs to the `logs/` subdirectory of wherever `sim_vehicle.py` was launched. After landing:
 
 ```bash
+mkdir -p logs/ornl
 ls -lt logs/*.BIN | head -3
 cp $(ls -t logs/*.BIN | head -1) logs/ornl/baseline_flight.bin
 ```
@@ -208,17 +211,20 @@ AUTO-01 is complete when `logs/ornl/baseline_flight.bin` exists and the QGroundC
 
 > **Warning: You should not run this code until AUTO-01 passes.**
 
-Next, we will modify the baseline flight to perform GPS spoofing mid=flight. We will apply the following attack parameters (adds `GPS1_TYPE=14` and `GPS_AUTO_SWITCH=0`) in this demo.
+Next, we will modify the baseline flight to perform GPS spoofing mid-flight. We will apply the following attack parameters (adds `GPS1_TYPE=14` and `GPS_AUTO_SWITCH=0`) in this ORNL example demo.
 
 ### Step 1: Run the SITL
 
-Boot up the SITL using the same script provided in AUTO-01. If you just finished running Step 5 in AUTO-01 and have not ended the `sim_vehicle.py` session, then you do not need to run this script again.
+Boot up the SITL using the same script provided in AUTO-01. If you just finished running Step 7 in AUTO-01 (i.e., retrieving the `.bin` files) and have not ended the `sim_vehicle.py` session, then you do not need to run this script again.
 
 ```bash
 sim_vehicle.py -v ArduCopter \
+    --custom-location=35.93051398,-84.31067453,50,0 \
     --out udp:127.0.0.1:14550 \
     --out udp:127.0.0.1:14551
 ```
+
+An ArduPilot terminal should pop up in a new window if this step succeeded.
 
 ### Step 2: Enter GPS spoofing attack mode
 
@@ -232,13 +238,17 @@ By this point, you should have Terminal 1 running `sim_vehicle.py` and Terminal 
 
 ### Step 3: Reboot SITL
 
-Type `reboot` in the Terminal 1 (the SITL console). Then, move to Terminal 2 and run the GPS hook:
+Type `reboot` in the Terminal 1 (the SITL console).
+
+### Step 4: Activate the GPS hook attack
+
+Move to Terminal 2 and run the GPS hook:
 
 ```bash
 python3 attack/gps_hook.py
 ```
 
-### Step 4: Observe via QGroundControl
+### Step 5: Observe via QGroundControl
 
 Run QGroundControl to observe the GPS spoofing flight. If you have already opened QGroundControl and haven't closed it since AUTO-01, you do not need to re-open it.
 
@@ -246,7 +256,7 @@ Run QGroundControl to observe the GPS spoofing flight. If you have already opene
 ./QGroundControl-x86_64.AppImage
 ```
 
-### Step 5: Save the spoofed log
+### Step 6: Save the spoofed log
 
 Similar to AUTO-01, the spoofed flight has already been saved, but you can rename it for readability.
 

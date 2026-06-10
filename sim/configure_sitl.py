@@ -2,15 +2,15 @@
 Configure ArduPilot SITL parameters for the GPS spoofing experiment.
 
 Two modes:
-  baseline  — enables the geofence (run before the clean flight)
-  attack    — geofence on plus GPS1_TYPE=14 and GPS_AUTO_SWITCH=0 so MAVLink
+  baseline:    enables the geofence and resets GPS to ArduPilot defaults
+  attack:      enables the geofence and switches GPS to MAVLink input so
                GPS_INPUT messages are accepted (run once before the spoofed
                flight; injection itself is handled by attack/gps_hook.py)
 
 Connects on the secondary MAVProxy UDP port (14551) to avoid conflicting
 with QGroundControl, which listens on 14550.
 
-All tunable values live in mission/config.yaml.
+All tunable values live in sim/sitl_params.yaml.
 """
 
 from __future__ import annotations
@@ -30,7 +30,7 @@ CONFIG_PATH = Path(__file__).parent / "sitl_params.yaml"
 
 @dataclass(frozen=True)
 class Config:
-    """Immutable runtime configuration loaded from config.yaml.
+    """Immutable runtime configuration loaded from sitl_params.yaml.
 
     Scalar fields are frozen by the dataclass. Parameter dicts are wrapped
     in MappingProxyType so their contents cannot be mutated after load.
@@ -41,7 +41,9 @@ class Config:
     param_ack_timeout_seconds: int
     param_max_retries: int
     fence_params: Mapping[str, float]
-    gps_input_params: Mapping[str, float]
+    nav_params: Mapping[str, float]
+    gps_baseline_params: Mapping[str, float]
+    gps_attack_params: Mapping[str, float]
 
     @classmethod
     def from_yaml(cls, path: Path = CONFIG_PATH) -> Config:
@@ -62,7 +64,9 @@ class Config:
             param_ack_timeout_seconds=data["mavlink_params"]["ack_timeout_seconds"],
             param_max_retries=data["mavlink_params"]["max_retries"],
             fence_params=MappingProxyType(data["fence_params"]),
-            gps_input_params=MappingProxyType(data["gps_input_params"]),
+            nav_params=MappingProxyType(data["nav_params"]),
+            gps_baseline_params=MappingProxyType(data["gps_baseline_params"]),
+            gps_attack_params=MappingProxyType(data["gps_attack_params"]),
         )
 
 
@@ -175,9 +179,9 @@ def run(mode: str) -> None:
     config = Config.from_yaml()
 
     params = (
-        config.fence_params
+        {**config.fence_params, **config.nav_params, **config.gps_baseline_params}
         if mode == "baseline"
-        else {**config.fence_params, **config.gps_input_params}
+        else {**config.fence_params, **config.nav_params, **config.gps_attack_params}
     )
 
     connection = SitlConnection(config)
@@ -190,11 +194,10 @@ def run(mode: str) -> None:
     connection.close()
     print(f"\nDone — {mode} parameters applied.")
 
-    if mode == "attack":
-        print(
-            "\nNOTE: Reboot the SITL (or send MAV_CMD_PREFLIGHT_REBOOT_SHUTDOWN) "
-            "for GPS1_TYPE and EK3_GPS_TYPE to take effect."
-        )
+    print(
+        "\nNOTE: Reboot the SITL (or send MAV_CMD_PREFLIGHT_REBOOT_SHUTDOWN) "
+        "for GPS1_TYPE to take effect."
+    )
 
 
 def parse_args() -> argparse.Namespace:

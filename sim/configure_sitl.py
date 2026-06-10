@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import argparse
 import sys
+import time
 from collections.abc import Mapping
 from dataclasses import dataclass
 from pathlib import Path
@@ -167,7 +168,37 @@ class ParameterManager:
             self.set_parameter(name, value)
 
 
-def run(mode: str) -> None:
+_REBOOT_SETTLE_SECONDS = 5
+
+
+def reboot_and_wait(connection: SitlConnection, config: Config) -> None:
+    """Reboot SITL via MAVLink and block until it comes back online.
+
+    Args:
+        connection: An active connection to the SITL instance to reboot. Closed
+            as part of the reboot.
+        config: Configuration used to reconnect once SITL restarts.
+
+    Raises:
+        ConnectionError: If SITL does not re-heartbeat within the configured timeout.
+    """
+    mav = connection.mav
+    mav.mav.command_long_send(
+        mav.target_system,
+        mav.target_component,
+        mavutil.mavlink.MAV_CMD_PREFLIGHT_REBOOT_SHUTDOWN,
+        0,
+        1, 0, 0, 0, 0, 0, 0,
+    )
+    connection.close()
+    time.sleep(_REBOOT_SETTLE_SECONDS)
+
+    new_connection = SitlConnection(config)
+    new_connection.connect()
+    new_connection.close()
+
+
+def run(mode: str, reboot: bool) -> None:
     """Connect to SITL and apply the parameter set for the requested mode.
 
     In attack mode the baseline params are applied first, then the attack-specific
@@ -175,6 +206,8 @@ def run(mode: str) -> None:
 
     Args:
         mode: Either "baseline" or "attack".
+        reboot: If True, reboot SITL via MAVLink and wait for it to come back
+            online so GPS1_TYPE changes take effect.
     """
     config = Config.from_yaml()
 
@@ -191,13 +224,18 @@ def run(mode: str) -> None:
     print(f"\nApplying {mode} parameters:")
     manager.apply_params(params)
 
-    connection.close()
     print(f"\nDone — {mode} parameters applied.")
 
-    print(
-        "\nNOTE: Reboot the SITL (or send MAV_CMD_PREFLIGHT_REBOOT_SHUTDOWN) "
-        "for GPS1_TYPE to take effect."
-    )
+    if reboot:
+        print("\nRebooting SITL …")
+        reboot_and_wait(connection, config)
+        print("SITL back online.")
+    else:
+        connection.close()
+        print(
+            "\nNOTE: Reboot the SITL (or send MAV_CMD_PREFLIGHT_REBOOT_SHUTDOWN) "
+            "for GPS1_TYPE to take effect."
+        )
 
 
 def parse_args() -> argparse.Namespace:
@@ -211,13 +249,18 @@ def parse_args() -> argparse.Namespace:
         default="baseline",
         help="Parameter set to apply (default: baseline)",
     )
+    parser.add_argument(
+        "--reboot",
+        action="store_true",
+        help="Reboot SITL via MAVLink and wait for it to come back online",
+    )
     return parser.parse_args()
 
 
 if __name__ == "__main__":
     args = parse_args()
     try:
-        run(args.mode)
+        run(args.mode, args.reboot)
     except (ConnectionError, FileNotFoundError, KeyError) as exc:
         print(f"Error: {exc}", file=sys.stderr)
         sys.exit(1)

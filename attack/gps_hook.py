@@ -9,21 +9,22 @@ consistency checks from immediately rejecting the fix, so the resulting anomalie
 (geofence breach, baro/yaw/mag/HDOP divergence) match the attack model under
 replication (Hakani et al., 2026).
 
-All tunable values live in gps_attack_params.yaml.
+All tunable values live in attack/presets/<preset>.yaml (default: ornl.yaml).
 """
 
 from __future__ import annotations
 
+import argparse
 import logging
 import sys
 import time
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 
 import yaml
 from pymavlink import mavutil
 
-CONFIG_PATH = Path(__file__).parent / "gps_attack_params.yaml"
+CONFIG_PATH = Path(__file__).parent / "presets" / "ornl.yaml"
 LOG_PATH = Path(__file__).parent.parent / "logs" / "gps_hook.log"
 
 # GPS epoch: 1980-01-06T00:00:00Z. Used to derive time_week/time_week_ms for
@@ -352,9 +353,31 @@ def _configure_logging() -> None:
     )
 
 
-def run() -> None:
+def parse_args() -> argparse.Namespace:
+    """Parse command-line arguments."""
+    parser = argparse.ArgumentParser(
+        description="Inject spoofed GPS coordinates into ArduPilot SITL"
+    )
+    parser.add_argument(
+        "--config",
+        type=Path,
+        default=CONFIG_PATH,
+        help=f"Path to attack config YAML (default: {CONFIG_PATH})",
+    )
+    parser.add_argument(
+        "--attack-delay-seconds",
+        type=float,
+        default=None,
+        help="Override injection_params.attack_delay_seconds from the config",
+    )
+    return parser.parse_args()
+
+
+def run(args: argparse.Namespace) -> None:
     """Load configuration, connect to SITL, and run the GPS spoof."""
-    config = Config.from_yaml()
+    config = Config.from_yaml(args.config)
+    if args.attack_delay_seconds is not None:
+        config = replace(config, attack_delay_seconds=args.attack_delay_seconds)
 
     connection = SitlConnection(config)
     connection.connect()
@@ -367,7 +390,7 @@ def run() -> None:
 if __name__ == "__main__":
     _configure_logging()
     try:
-        run()
+        run(parse_args())
     except (ConnectionError, FileNotFoundError, KeyError, ValueError) as exc:
         logger.error("Error: %s", exc)
         sys.exit(1)

@@ -36,7 +36,7 @@ gps-attack/
 
 ---
 
-## Local Quickstart (recommended for development)
+## Local Installation
 
 Tested on Ubuntu 22.04. All commands run from the repo root unless noted. You only need to run these steps once to c
 
@@ -112,6 +112,35 @@ if [ -f ~/.ardupilot_profile ]; then
     source ~/.ardupilot_profile
 fi
 ```
+
+---
+
+## Quickstart: `run_simulation.sh`
+
+Once the local setup above is complete, `run_simulation.sh` automates the
+manual steps below: it clears persisted SITL state, launches `sim_vehicle.py`
+in the background at the chosen preset's location, applies the SITL
+parameters for the chosen mode, reboots SITL automatically, and (for attack
+modes) runs `attack/gps_hook.py`.
+
+```bash
+./run_simulation.sh --mode baseline --preset ornl
+./run_simulation.sh --mode static   --preset ornl
+./run_simulation.sh --mode dynamic  --preset canberra
+```
+
+- `--mode baseline`: clean reference flight (GPS1_TYPE=1, no spoofing).
+- `--mode static`: GPS spoofing active immediately (`attack_delay_seconds: 0`).
+- `--mode dynamic`: GPS spoofing activates after the preset's configured delay.
+- `--preset {ornl|canberra}` — selects the SITL location and the matching
+  `attack/presets/<preset>.yaml` config and `plans/<preset>.plan` mission.
+
+After the script finishes, open QGroundControl, upload `plans/<preset>.plan`,
+and start the mission as described in the steps below — the script does not
+automate the QGroundControl GUI. SITL keeps running in the background; the
+script prints its PID and log file path so you can stop it afterward.
+
+The sections below walk through what the script automates, step by step, and are encouraged for developers who want to understand the workflow or need to troubleshoot.
 
 ---
 

@@ -181,7 +181,7 @@ c. <img src="icons/qgroundcontrol_upload.png" alt="Upload" width="100"> Click **
 
 ### Step 6: Arm and fly
 
-**CRITICAL STEP**: Wait until the console prints `APM: EKF3 IMU0 is using GPS` before proceeding, because the simulated GPS fix is required for arming. The vehicle spawns near Oak Ridge, TN (35.93°, -84.31°).
+**CRITICAL STEP**: Wait until the console prints `APM: EKF3 IMU0 is using GPS` before proceeding, because the simulated GPS fix is required for arming. The vehicle spawns near Oak Ridge, TN (35.93°, -84.31°) See [DEBUG_FAQ.md](DEBUG_FAQ.md#ornl-baseline-flight-is-not-ready) if you see a yellow "Not Ready" message.
 
 In QGroundControl **Fly** view, hold the **Start Mission** slider-arm button.
 

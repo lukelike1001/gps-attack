@@ -68,4 +68,18 @@ Let's break down how the `custom-location` structure works.
 
 Therefore, in this example, the Oak Ridge National Lab coordinates are (35.93°N, -84.31°W), with an altitude set to 50m and a heading of 0°.
 
+# ORNL baseline flight is "Not Ready"
 
+Let's say you reached Step 6 in the baseline flight example and see a yellow "Not Ready" message as shown here:
+
+![Baseline Fake Bug](icons/ornl_baseline_fake_bug.png)
+
+Moreso, you may see this error in Terminal 1 (and also the QGroundControl log):
+
+```
+[22:56:11.367 ] Critical: PreArm: Fence enabled, need position estimate
+```
+
+However, you do not have to worry about this message. **Just wait** until you see this message pop up in Terminal 1: `APM: EKF3 IMU0 is using GPS`. If you're fast at going through the directions before the GPS connection, you'll confuse ArduPilot and QGroundControl!
+
+You'll eventually see the yellow "Not Ready" turn into a green "Ready" message, and you can continue the baseline example as normal.

@@ -240,6 +240,10 @@ By this point, you should have Terminal 1 running `sim_vehicle.py` and Terminal 
 
 Type `reboot` in the Terminal 1 (the SITL console).
 
+```bash
+reboot
+```
+
 ### Step 4: Activate the GPS hook attack
 
 Move to Terminal 2 and run the GPS hook:
@@ -262,7 +266,7 @@ Similar to AUTO-01, the spoofed flight has already been saved, but you can renam
 
 ```bash
 ls -lt logs/*.BIN | head -3
-cp $(ls -t logs/*.BIN | head -1) logs/spoofed_flight.bin
+cp $(ls -t logs/*.BIN | head -1) logs/ornl/spoofed_flight.bin
 ```
 
 ---

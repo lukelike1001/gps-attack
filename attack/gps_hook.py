@@ -40,20 +40,20 @@ class GpsAttack:
     """Attack targeting GPS / navigation.
 
     Args:
-        type: One of ``passthrough``, ``replay``, ``drift``
-        lat: Spoofed latitude (for ``replay``).
-        lon: Spoofed longitude (for ``replay``).
-        alt: Spoofed altitude (for ``replay``).
-        rate_lat: Drift rate in deg/s (for ``drift``).
-        rate_lon: Drift rate in deg/s (for ``drift``).
+        type: One of ``passthrough``, ``fabric``, ``drift``
+        fabric_lat: Spoofed latitude (for fabricated attacks, e.g. ``fabric``).
+        fabric_lon: Spoofed longitude (for fabricated attacks, e.g. ``fabric``).
+        fabric_alt: Spoofed altitude (for fabricated attacks, e.g. ``fabric``).
+        drift_rate_lat: Drift rate in deg/s (for ``drift``).
+        drift_rate_lon: Drift rate in deg/s (for ``drift``).
     """
 
     type: str = "passthrough"
-    lat: float = 0.0
-    lon: float = 0.0
-    alt: float = 0.0
-    rate_lat: float = 1e-5
-    rate_lon: float = 1e-5
+    fabric_lat: float = 0.0
+    fabric_lon: float = 0.0
+    fabric_alt: float = 0.0
+    drift_rate_lat: float = 1e-5
+    drift_rate_lon: float = 1e-5
 
 
 @dataclass(frozen=True)
@@ -62,8 +62,9 @@ class Config:
 
     connection_address: str
     heartbeat_timeout_seconds: int
-    injection_rate_hz: float
-    duration_seconds: float
+    gps_input_rate_hz: float
+    attack_delay_seconds: float
+    flight_duration_seconds: float
     attack: GpsAttack
 
     @classmethod
@@ -82,9 +83,10 @@ class Config:
         return cls(
             connection_address=data["connection"]["address"],
             heartbeat_timeout_seconds=data["connection"]["heartbeat_timeout_seconds"],
-            injection_rate_hz=data["injection"]["rate_hz"],
-            duration_seconds=data["injection"]["duration_seconds"],
-            attack=GpsAttack(**data["attack"]),
+            gps_input_rate_hz=data["injection_params"]["gps_input_rate_hz"],
+            attack_delay_seconds=data["injection_params"]["attack_delay_seconds"],
+            flight_duration_seconds=data["injection_params"]["flight_duration_seconds"],
+            attack=GpsAttack(**data["attack_params"]),
         )
 
 
@@ -164,23 +166,26 @@ class GpsSpoofer:
         self._connection = connection
         self._config = config
         self._logged_first_position = False
+        self._logged_attack_start = False
         self._last_position: VehiclePosition | None = None
 
     def run(self) -> None:
         """Inject spoofed GPS_INPUT messages until the configured duration elapses."""
         attack = self._config.attack
-        interval_seconds = 1.0 / self._config.injection_rate_hz
+        interval_seconds = 1.0 / self._config.gps_input_rate_hz
         start_time = time.monotonic()
         elapsed_seconds = 0.0
 
         logger.info(
-            "Starting '%s' GPS spoof for %.0fs at %.1f Hz",
+            "Starting '%s' GPS spoof — passthrough for %.0fs, then attack for %.0fs at %.1f Hz",
             attack.type,
-            self._config.duration_seconds,
-            self._config.injection_rate_hz,
+            self._config.attack_delay_seconds,
+            self._config.flight_duration_seconds,
+            self._config.gps_input_rate_hz,
         )
+
         try:
-            while elapsed_seconds < self._config.duration_seconds:
+            while elapsed_seconds < self._config.flight_duration_seconds:
                 elapsed_seconds = time.monotonic() - start_time
 
                 fresh_position = self._read_vehicle_position()
@@ -189,9 +194,21 @@ class GpsSpoofer:
 
                 position = self._last_position
                 if position is not None:
-                    spoofed_lat, spoofed_lon, spoofed_alt = self._compute_spoofed_position(
-                        position, elapsed_seconds
-                    )
+                    attack_elapsed = elapsed_seconds - self._config.attack_delay_seconds
+                    if attack_elapsed < 0:
+                        spoofed_lat, spoofed_lon, spoofed_alt = (
+                            position.lat, position.lon, position.alt
+                        )
+                    else:
+                        if not self._logged_attack_start:
+                            logger.info(
+                                "Attack activated — spoofing to lat=%.7f lon=%.7f alt=%.2f",
+                                attack.fabric_lat, attack.fabric_lon, attack.fabric_alt,
+                            )
+                            self._logged_attack_start = True
+                        spoofed_lat, spoofed_lon, spoofed_alt = self._compute_spoofed_position(
+                            position, attack_elapsed
+                        )
                     if not self._logged_first_position:
                         logger.info(
                             "First reading — real: lat=%.7f lon=%.7f alt=%.2f "
@@ -248,12 +265,12 @@ class GpsSpoofer:
         attack = self._config.attack
         if attack.type == "passthrough":
             return position.lat, position.lon, position.alt
-        if attack.type == "replay":
-            return attack.lat, attack.lon, attack.alt
+        if attack.type == "fabric":
+            return attack.fabric_lat, attack.fabric_lon, attack.fabric_alt
         if attack.type == "drift":
             return (
-                position.lat + attack.rate_lat * elapsed_seconds,
-                position.lon + attack.rate_lon * elapsed_seconds,
+                position.lat + attack.drift_rate_lat * elapsed_seconds,
+                position.lon + attack.drift_rate_lon * elapsed_seconds,
                 position.alt,
             )
         raise ValueError(f"Unknown GPS attack type: {attack.type!r}")

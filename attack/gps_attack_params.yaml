@@ -2,14 +2,15 @@ connection:
   address: "udp:127.0.0.1:14551"
   heartbeat_timeout_seconds: 30
 
-injection:
-  rate_hz: 5
-  duration_seconds: 240
+injection_params:
+  gps_input_rate_hz: 5
+  attack_delay_seconds: 0
+  flight_duration_seconds: 240
 
-attack:
-  type: "replay"         # passthrough | replay | drift
-  lat: 35.93323230241756 # ~330m north of home — outside the 200m geofence radius
-  lon: -84.31181199768014
-  alt: 50.0
-  rate_lat: 1.0e-5
-  rate_lon: 1.0e-5
+attack_params:
+  type: "fabric"         # passthrough | fabric | drift
+  fabric_lat: 36.01      # default: 35.9442323021756
+  fabric_lon: -84.29     # default: -84.31181199768014
+  fabric_alt: 50.0
+  drift_rate_lat: 1.0e-5
+  drift_rate_lon: 1.0e-5

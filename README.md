@@ -130,8 +130,11 @@ modes) runs `attack/gps_hook.py`.
 ```
 
 - `--mode baseline`: clean reference flight (GPS1_TYPE=1, no spoofing).
-- `--mode static`: GPS spoofing active immediately (`attack_delay_seconds: 0`).
-- `--mode dynamic`: GPS spoofing activates after the preset's configured delay.
+- `--mode static`: GPS spoofing active immediately (`dynamic_delay_seconds: 0`,
+  `dynamic_attack_enabled: false`).
+- `--mode dynamic`: GPS spoofing activates `dynamic_delay_seconds` after the
+  drone first reaches cruise altitude (not after the script starts), so the
+  attack timing is independent of how long mission upload/arming takes.
 - `--preset {ornl|canberra}` — selects the SITL location and the matching
   `attack/presets/<preset>.yaml` config and `plans/<preset>.plan` mission.
 

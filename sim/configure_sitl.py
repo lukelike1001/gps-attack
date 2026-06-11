@@ -224,7 +224,7 @@ def run(mode: str, reboot: bool) -> None:
     print(f"\nApplying {mode} parameters:")
     manager.apply_params(params)
 
-    print(f"\nDone — {mode} parameters applied.")
+    print(f"\nDone! {mode} parameters applied.")
 
     if reboot:
         print("\nRebooting SITL …")

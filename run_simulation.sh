@@ -57,7 +57,8 @@ if [[ "$MODE" == "baseline" ]]; then
 else
     python3 sim/configure_sitl.py --mode attack --reboot
     if [[ "$MODE" == "static" ]]; then
-        python3 attack/gps_hook.py --config "$PRESET_CONFIG" --attack-delay-seconds 0
+        python3 attack/gps_hook.py --config "$PRESET_CONFIG" \
+            --dynamic-delay-seconds 0 --dynamic-attack-enabled false
     else
         python3 attack/gps_hook.py --config "$PRESET_CONFIG"
     fi
@@ -82,6 +83,13 @@ while true; do
         pkill -f 'build/sitl/bin/arducopter' || true
         pkill -f 'mavproxy.py.*5760' || true
         pkill -f 'xterm.*ArduCopter' || true
+        sleep 2
+        BIN_LOG=$(ls -t logs/*.BIN 2>/dev/null | head -1)
+        if [[ -n "$BIN_LOG" ]]; then
+            BIN_DEST="logs/${MODE}_${PRESET}.bin"
+            cp "$BIN_LOG" "$BIN_DEST"
+            echo "Saved flight log: ${BIN_DEST}"
+        fi
         echo "Done."
         break
     fi

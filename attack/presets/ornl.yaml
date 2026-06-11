@@ -4,8 +4,9 @@ connection:
 
 injection_params:
   gps_input_rate_hz: 5
-  attack_delay_seconds: 50
+  dynamic_delay_seconds: 20
   flight_duration_seconds: 240
+  dynamic_attack_enabled: true   # static mode overrides this to false via CLI
 
 home_position:               # matches sim_vehicle.py --custom-location for ORNL
   lat: 35.93051398

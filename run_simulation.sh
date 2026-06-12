@@ -53,9 +53,9 @@ sim_vehicle.py -v ArduCopter \
 SITL_PID=$!
 
 if [[ "$MODE" == "baseline" ]]; then
-    python3 sim/set_scenario_params.py --mode baseline --reboot
+    python3 sim/load_scenario.py --mode baseline --reboot
 else
-    python3 sim/set_scenario_params.py --mode attack --reboot
+    python3 sim/load_scenario.py --mode attack --reboot
     if [[ "$MODE" == "static" ]]; then
         python3 attack/gps_hook.py --config "$PRESET_CONFIG" \
             --dynamic-delay-seconds 0 --dynamic-attack-enabled false

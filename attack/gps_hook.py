@@ -1,7 +1,7 @@
 """
 Inject spoofed GPS coordinates into ArduPilot SITL via MAVLink GPS_INPUT messages.
 
-Run after `sim/set_scenario_params.py --mode attack` and a SITL reboot (see README REPLAY-01).
+Run after `sim/load_scenario.py --mode attack` and a SITL reboot (see README REPLAY-01).
 Connects on the secondary MAVProxy UDP port (14551), reads the vehicle's real position
 and velocity from GLOBAL_POSITION_INT, and replaces the position component with a
 spoofed one while passing real velocity through. This keeps the EKF's internal

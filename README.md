@@ -23,7 +23,7 @@ gps-attack/
 │   └── ornl.plan               QGroundControl waypoint mission + geofence (ORNL, TN)
 ├── sim/
 │   ├── scenario_params.yaml    Tunable SITL scenario parameter values
-│   └── set_scenario_params.py  Sets ArduPilot scenario parameters via MAVLink
+│   └── load_scenario.py        Sets ArduPilot scenario parameters via MAVLink
 ├── attack/
 │   └── gps_hook.py             GPS_INPUT injection hook (REPLAY-01)
 ├── analysis/
@@ -172,7 +172,7 @@ You should see a new `ArduCopter` window pop up.
 In a second terminal:
 
 ```bash
-python3 sim/set_scenario_params.py --mode baseline
+python3 sim/load_scenario.py --mode baseline
 ```
 
 This enables fence behaviour (RTL on breach) via `sim/scenario_params.yaml`. The geofence geometry is defined in the plan file and uploaded later.
@@ -263,10 +263,10 @@ An ArduPilot terminal should pop up in a new window if this step succeeded.
 In a new terminal, you should run the following script to switch from the `baseline` to `attack` mode.
 
 ```bash
-python3 sim/set_scenario_params.py --mode attack
+python3 sim/load_scenario.py --mode attack
 ```
 
-By this point, you should have Terminal 1 running `sim_vehicle.py` and Terminal 2 running this `configure.sitl.py` file.
+By this point, you should have Terminal 1 running `sim_vehicle.py` and Terminal 2 running this `load_scenario.py` file.
 
 ### Step 3: Reboot SITL
 
@@ -356,10 +356,10 @@ Launch QGroundControl. It auto-connects to SITL via UDP 14550 on localhost.
 
 ```bash
 # Baseline
-docker compose exec ardupilot-sitl python3 sim/set_scenario_params.py --mode baseline
+docker compose exec ardupilot-sitl python3 sim/load_scenario.py --mode baseline
 
 # Attack (after baseline flight completes)
-docker compose exec ardupilot-sitl python3 sim/set_scenario_params.py --mode attack
+docker compose exec ardupilot-sitl python3 sim/load_scenario.py --mode attack
 ```
 
 ### Run the GPS hook

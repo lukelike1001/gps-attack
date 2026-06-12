@@ -1,7 +1,3 @@
-connection:
-  address: "udp:127.0.0.1:14551"
-  heartbeat_timeout_seconds: 30
-
 injection_params:
   gps_input_rate_hz: 5
   dynamic_delay_seconds: 20

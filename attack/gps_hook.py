@@ -23,7 +23,9 @@ from dataclasses import dataclass, replace
 from pathlib import Path
 
 import yaml
-from pymavlink import mavutil
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+from communication.connect_to_sitl import ConnectionConfig, SitlConnection
 
 CONFIG_PATH = Path(__file__).parent / "presets" / "ornl.yaml"
 LOG_PATH = Path(__file__).parent.parent / "logs" / "gps_hook.log"
@@ -88,8 +90,6 @@ def _load_cruise_alt(config_path: Path) -> float:
 class Config:
     """Immutable runtime configuration loaded from gps_attack_params.yaml."""
 
-    connection_address: str
-    heartbeat_timeout_seconds: int
     gps_input_rate_hz: float
     dynamic_delay_seconds: float
     dynamic_attack_enabled: bool
@@ -114,8 +114,6 @@ class Config:
         with path.open() as file:
             data = yaml.safe_load(file)
         return cls(
-            connection_address=data["connection"]["address"],
-            heartbeat_timeout_seconds=data["connection"]["heartbeat_timeout_seconds"],
             gps_input_rate_hz=data["injection_params"]["gps_input_rate_hz"],
             dynamic_delay_seconds=data["injection_params"]["dynamic_delay_seconds"],
             dynamic_attack_enabled=data["injection_params"]["dynamic_attack_enabled"],
@@ -126,51 +124,6 @@ class Config:
             home_alt=data["home_position"]["alt"],
             attack=GpsAttack(**data["attack_params"]),
         )
-
-
-class SitlConnection:
-    """Manages a MAVLink connection to ArduPilot SITL."""
-
-    def __init__(self, config: Config) -> None:
-        """Initialise with injected configuration; does not connect immediately."""
-        self._config = config
-        self._mav = None
-
-    def connect(self) -> None:
-        """Open the MAVLink connection and block until a heartbeat is received.
-
-        Raises:
-            ConnectionError: If no heartbeat arrives within the configured timeout.
-        """
-        logger.info("Connecting to SITL at %s …", self._config.connection_address)
-        self._mav = mavutil.mavlink_connection(self._config.connection_address)
-        if not self._mav.wait_heartbeat(timeout=self._config.heartbeat_timeout_seconds):
-            raise ConnectionError(
-                f"No heartbeat from SITL within "
-                f"{self._config.heartbeat_timeout_seconds}s. "
-                "Is sim_vehicle.py running?"
-            )
-        logger.info(
-            "  system %d component %d online",
-            self._mav.target_system,
-            self._mav.target_component,
-        )
-
-    def close(self) -> None:
-        """Close the MAVLink connection if one is open."""
-        if self._mav:
-            self._mav.close()
-
-    @property
-    def mav(self):
-        """Return the active MAVLink handle.
-
-        Raises:
-            RuntimeError: If called before connect().
-        """
-        if not self._mav:
-            raise RuntimeError("Call connect() before accessing the MAVLink handle.")
-        return self._mav
 
 
 @dataclass(frozen=True)
@@ -459,7 +412,8 @@ def run(args: argparse.Namespace) -> None:
     if args.dynamic_attack_enabled is not None:
         config = replace(config, dynamic_attack_enabled=(args.dynamic_attack_enabled == "true"))
 
-    connection = SitlConnection(config)
+    connection_config = ConnectionConfig.from_yaml()
+    connection = SitlConnection(connection_config)
     connection.connect()
     try:
         GpsSpoofer(connection, config).run()

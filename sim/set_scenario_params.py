@@ -10,7 +10,7 @@ Two modes:
 Connects on the secondary MAVProxy UDP port (14551) to avoid conflicting
 with QGroundControl, which listens on 14550.
 
-All tunable values live in sim/sitl_params.yaml.
+All tunable values live in sim/scenario_params.yaml.
 """
 
 from __future__ import annotations
@@ -29,12 +29,12 @@ from pymavlink import mavutil
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from communication.connect_to_sitl import ConnectionConfig, SitlConnection
 
-CONFIG_PATH = Path(__file__).parent / "sitl_params.yaml"
+CONFIG_PATH = Path(__file__).parent / "scenario_params.yaml"
 
 
 @dataclass(frozen=True)
 class Config:
-    """Immutable runtime configuration loaded from sitl_params.yaml.
+    """Immutable runtime configuration loaded from scenario_params.yaml.
 
     Scalar fields are frozen by the dataclass. Parameter dicts are wrapped
     in MappingProxyType so their contents cannot be mutated after load.

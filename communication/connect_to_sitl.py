@@ -1,7 +1,7 @@
 """
 Manage a MAVLink connection to ArduPilot SITL.
 
-Shared by sim/configure_sitl.py and attack/gps_hook.py: both connect on the
+Shared by sim/set_scenario_params.py and attack/gps_hook.py: both connect on the
 secondary MAVProxy UDP port (14551) to avoid conflicting with QGroundControl,
 which listens on 14550.
 

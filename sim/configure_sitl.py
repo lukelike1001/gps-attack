@@ -26,6 +26,9 @@ from types import MappingProxyType
 import yaml
 from pymavlink import mavutil
 
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+from communication.connect_to_sitl import ConnectionConfig, SitlConnection
+
 CONFIG_PATH = Path(__file__).parent / "sitl_params.yaml"
 
 
@@ -37,8 +40,6 @@ class Config:
     in MappingProxyType so their contents cannot be mutated after load.
     """
 
-    connection_address: str
-    heartbeat_timeout_seconds: int
     param_ack_timeout_seconds: int
     param_max_retries: int
     fence_params: Mapping[str, float]
@@ -60,8 +61,6 @@ class Config:
         with path.open() as file:
             data = yaml.safe_load(file)
         return cls(
-            connection_address=data["connection_params"]["address"],
-            heartbeat_timeout_seconds=data["connection_params"]["heartbeat_timeout_seconds"],
             param_ack_timeout_seconds=data["mavlink_params"]["ack_timeout_seconds"],
             param_max_retries=data["mavlink_params"]["max_retries"],
             fence_params=MappingProxyType(data["fence_params"]),
@@ -69,50 +68,6 @@ class Config:
             gps_baseline_params=MappingProxyType(data["gps_baseline_params"]),
             gps_attack_params=MappingProxyType(data["gps_attack_params"]),
         )
-
-
-class SitlConnection:
-    """Manages a MAVLink connection to ArduPilot SITL."""
-
-    def __init__(self, config: Config) -> None:
-        """Initialise with injected configuration; does not connect immediately."""
-        self._config = config
-        self._mav = None
-
-    def connect(self) -> None:
-        """Open the MAVLink connection and block until a heartbeat is received.
-
-        Raises:
-            ConnectionError: If no heartbeat arrives within the configured timeout.
-        """
-        print(f"Connecting to SITL at {self._config.connection_address} …", flush=True)
-        self._mav = mavutil.mavlink_connection(self._config.connection_address)
-        if not self._mav.wait_heartbeat(timeout=self._config.heartbeat_timeout_seconds):
-            raise ConnectionError(
-                f"No heartbeat from SITL within "
-                f"{self._config.heartbeat_timeout_seconds}s. "
-                "Is sim_vehicle.py running?"
-            )
-        print(
-            f"  system {self._mav.target_system} "
-            f"component {self._mav.target_component} online"
-        )
-
-    def close(self) -> None:
-        """Close the MAVLink connection if one is open."""
-        if self._mav:
-            self._mav.close()
-
-    @property
-    def mav(self):
-        """Return the active MAVLink handle.
-
-        Raises:
-            RuntimeError: If called before connect().
-        """
-        if not self._mav:
-            raise RuntimeError("Call connect() before accessing the MAVLink handle.")
-        return self._mav
 
 
 class ParameterManager:
@@ -171,13 +126,13 @@ class ParameterManager:
 _REBOOT_SETTLE_SECONDS = 5
 
 
-def reboot_and_wait(connection: SitlConnection, config: Config) -> None:
+def reboot_and_wait(connection: SitlConnection, connection_config: ConnectionConfig) -> None:
     """Reboot SITL via MAVLink and block until it comes back online.
 
     Args:
         connection: An active connection to the SITL instance to reboot. Closed
             as part of the reboot.
-        config: Configuration used to reconnect once SITL restarts.
+        connection_config: Configuration used to reconnect once SITL restarts.
 
     Raises:
         ConnectionError: If SITL does not re-heartbeat within the configured timeout.
@@ -193,7 +148,7 @@ def reboot_and_wait(connection: SitlConnection, config: Config) -> None:
     connection.close()
     time.sleep(_REBOOT_SETTLE_SECONDS)
 
-    new_connection = SitlConnection(config)
+    new_connection = SitlConnection(connection_config)
     new_connection.connect()
     new_connection.close()
 
@@ -210,6 +165,7 @@ def run(mode: str, reboot: bool) -> None:
             online so GPS1_TYPE changes take effect.
     """
     config = Config.from_yaml()
+    connection_config = ConnectionConfig.from_yaml()
 
     params = (
         {**config.fence_params, **config.nav_params, **config.gps_baseline_params}
@@ -217,7 +173,7 @@ def run(mode: str, reboot: bool) -> None:
         else {**config.fence_params, **config.nav_params, **config.gps_attack_params}
     )
 
-    connection = SitlConnection(config)
+    connection = SitlConnection(connection_config)
     connection.connect()
 
     manager = ParameterManager(connection, config)
@@ -228,7 +184,7 @@ def run(mode: str, reboot: bool) -> None:
 
     if reboot:
         print("\nRebooting SITL …")
-        reboot_and_wait(connection, config)
+        reboot_and_wait(connection, connection_config)
         print("SITL back online.")
     else:
         connection.close()

@@ -1,0 +1,4 @@
+attack_params:
+  type: "drift"
+  drift_rate_lat: 1.0e-5
+  drift_rate_lon: 1.0e-5

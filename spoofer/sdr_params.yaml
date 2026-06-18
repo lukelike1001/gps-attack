@@ -1,0 +1,8 @@
+gps_input_rate_hz: 5
+attack_duration_seconds: 240
+
+# GPS epoch: 1980-01-06T00:00:00Z. Used to derive time_week/time_week_ms for
+# GPS_INPUT: there is no "ignore time" flag in GPS_INPUT_IGNORE_FLAGS, so a
+# wrong/zero week number reads as a multi-decade time jump to the GPS backend.
+gps_epoch_unix : 315964800
+seconds_per_week : 604800

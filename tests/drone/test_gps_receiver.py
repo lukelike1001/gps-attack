@@ -1,4 +1,5 @@
 import pytest
+from unittest.mock import MagicMock
 from drone.gps_receiver import GpsReceiver
 
 
@@ -47,3 +48,27 @@ class TestGpsReceiver:
         assert isinstance(params["speed_accuracy"], float)
         assert isinstance(params["horizontal_accuracy"], float)
         assert isinstance(params["vertical_accuracy"], float)
+
+    def test_sync_updates_position_and_velocity_from_global_position_int(self, receiver):
+        msg = MagicMock()
+        msg.lat = 359305000
+        msg.lon = -843107000
+        msg.alt = 50000
+        msg.vx = 100
+        msg.vy = 200
+        msg.vz = -50
+        connection = MagicMock()
+        connection.mav.recv_match.return_value = msg
+
+        receiver.sync_position_and_velocity_to_sitl(connection)
+
+        assert receiver.get_position() == pytest.approx((35.9305, -84.3107, 50.0))
+        assert receiver.get_velocity() == pytest.approx((1.0, 2.0, -0.5))
+
+    def test_sync_returns_none_when_no_message_is_ready(self, receiver):
+        connection = MagicMock()
+        connection.mav.recv_match.return_value = None
+
+        result = receiver.sync_position_and_velocity_to_sitl(connection)
+
+        assert result is None

@@ -78,17 +78,10 @@ class GpsReceiver:
     def sync_position_and_velocity_to_sitl(self, connection: SitlConnection):
         """Poll for a fresh GLOBAL_POSITION_INT to update the drone's position and velocity"""
         msg = connection.mav.recv_match(type="GLOBAL_POSITION_INT", blocking=False)
+        
         if msg is None:
             return None
-        
-        # NOTE: I actually have no idea if this "if" statement is needed for either
-        # the static or dynamic attacks. This may be a piece of dead code that we
-        # must remove later (see: DESIGN-16)
-        if msg.lat == 0 and msg.lon == 0:
-            # "Null Island": the EKF hasn't ingested a GPS fix yet and has
-            # no origin set, so GLOBAL_POSITION_INT reports (0, 0).
-            return None
-        
+
         norm_lat, norm_lon, norm_alt = self.normalize_position(msg.lat, msg.lon, msg.alt)
         norm_vx, norm_vy, norm_vz = self.normalize_velocity(msg.vx, msg.vy, msg.vz)
         

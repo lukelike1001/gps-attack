@@ -1,8 +1,9 @@
 from attack.fabric_attack import FabricAttack
 from pathlib import Path
-from sim.drone import Drone
+from drone.gps_receiver import GpsReceiver
 
 class DynamicAttack(FabricAttack):
+    ATTACK_TYPE = "dynamic"
 
     def __init__(self, config_path: Path):
         super().__init__(config_path)
@@ -10,7 +11,7 @@ class DynamicAttack(FabricAttack):
         self.dynamic_delay_seconds = self.config["dynamic_delay_seconds"]
 
     def compute_spoofed_position(
-            self, drone: Drone, elapsed_seconds: float
+            self, gps_receiver: GpsReceiver, elapsed_seconds: float
     ) -> tuple[float, float, float]:
         """Given a drone and the elapsed time, calculate the new spoofed location."""
         

@@ -1,4 +1,0 @@
-connection_params:
-  address: "udp:127.0.0.1:14551"
-  heartbeat_timeout_seconds: 30
-  reboot_settle_seconds: 5

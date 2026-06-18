@@ -3,11 +3,11 @@ from dataclasses import dataclass
 from pathlib import Path
 import yaml
 
-CONFIG_PATH = Path(__file__).parent / "connect_to_sitl_params.yaml"
+CONFIG_PATH = Path(__file__).parent / "sitl_connection_params.yaml"
 
 @dataclass(frozen=True)
 class ConnectionConfig:
-    """Immutable connection settings loaded from connect_to_sitl_params.yaml."""
+    """Immutable connection settings loaded from sitl_connection_params.yaml."""
 
     connection_address: str
     heartbeat_timeout_seconds: int
@@ -27,7 +27,7 @@ class ConnectionConfig:
         with path.open() as file:
             data = yaml.safe_load(file)
         return cls(
-            connection_address=data["connection_params"]["address"],
-            heartbeat_timeout_seconds=data["connection_params"]["heartbeat_timeout_seconds"],
-            reboot_settle_seconds=data["connection_params"]["reboot_settle_seconds"],
+            connection_address=data["address"],
+            heartbeat_timeout_seconds=data["heartbeat_timeout_seconds"],
+            reboot_settle_seconds=data["reboot_settle_seconds"],
         )

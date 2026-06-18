@@ -1,0 +1,16 @@
+signal_quality_params:
+  fix_type_3d: 3
+  satellites_visible_count: 12
+  hdop: 1.0
+  vdop: 1.0
+  speed_accuracy: 0.5
+  horizontal_accuracy: 0.5
+  vertical_accuracy: 2.0
+
+norm_params:
+  lat_factor: 10000000.0
+  lon_factor: 10000000.0
+  alt_factor: 1000.0
+  vx_factor: 100.0
+  vy_factor: 100.0
+  vz_factor: 100.0

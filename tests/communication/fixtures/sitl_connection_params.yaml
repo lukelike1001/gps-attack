@@ -1,0 +1,25 @@
+connection_params:
+  address: "udp:127.0.0.1:14551"
+  heartbeat_timeout_seconds: 5
+  reboot_settle_seconds: 1
+  ack_timeout_seconds: 2
+  max_retries: 2
+
+fence_params:
+  FENCE_ENABLE: 1
+  FENCE_TYPE: 2
+  FENCE_RADIUS: 200
+  FENCE_ACTION: 1
+  FENCE_MARGIN: 2
+
+nav_params:
+  WPNAV_SPEED_UP: 400
+  WPNAV_SPEED_DN: 250
+
+gps_baseline_params:
+  GPS1_TYPE: 1
+  GPS_AUTO_SWITCH: 1
+
+gps_attack_params:
+  GPS1_TYPE: 14
+  GPS_AUTO_SWITCH: 0

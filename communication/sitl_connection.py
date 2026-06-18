@@ -19,8 +19,8 @@ class SitlConnection:
     def __init__(self, config: ConnectionConfig) -> None:
         """Initialise with injected configuration; does not connect immediately."""
         self.config = config
-        self.mav = None
-        
+        self._mav = None
+
 
     def connect(self) -> None:
         """Open the MAVLink connection and block until a heartbeat is received.
@@ -29,19 +29,18 @@ class SitlConnection:
             ConnectionError: If no heartbeat arrives within the configured timeout.
         """
         print(f"Connecting to SITL at {self.config.address} …", flush=True)
-        self.mav = mavutil.mavlink_connection(self.config.address)
-        if not self.mav.wait_heartbeat(timeout=self.config.heartbeat_timeout_seconds):
+        self._mav = mavutil.mavlink_connection(self.config.address)
+        if not self._mav.wait_heartbeat(timeout=self.config.heartbeat_timeout_seconds):
             raise ConnectionError(
                 f"No heartbeat from SITL within "
                 f"{self.config.heartbeat_timeout_seconds}s. "
                 "Is sim_vehicle.py running?"
             )
-        
         print(
-            f"  system {self.mav.target_system} "
-            f"component {self.mav.target_component} online"
+            f"  system {self._mav.target_system} "
+            f"component {self._mav.target_component} online"
         )
-    
+
 
     def reboot(self) -> None:
         """Reboot SITL via MAVLink and block until it comes back online.
@@ -67,25 +66,18 @@ class SitlConnection:
         self.close()
         print("ArduPilot will automatically attempt to reconnect to MAVLink...")
         time.sleep(self.config.reboot_settle_seconds)
-        self.verify_successful_reboot()
+        try:
+            self.connect()
+        except ConnectionError:
+            raise ConnectionError("SITL did not come back online after reboot.")
         print("Reconnected successfully!")
-    
-
-    def verify_successful_reboot(self) -> None:
-        """Verify that the SITL connection has come back online.
-
-        Raises:
-            ConnectionError: If SITL does not re-heartbeat within the configured timeout.
-        """
-        temporary_check_connection = SitlConnection(self.config)
-        temporary_check_connection.connect()
-        temporary_check_connection.close()
 
 
     def close(self) -> None:
         """Close the MAVLink connection if one is open."""
-        if self.mav:
-            self.mav.close()
+        if self._mav:
+            self._mav.close()
+            self._mav = None
 
 
     @property
@@ -95,10 +87,10 @@ class SitlConnection:
         Raises:
             RuntimeError: If called before connect().
         """
-        if not self.mav:
+        if not self._mav:
             raise RuntimeError("Call connect() before accessing the MAVLink handle.")
-        return self.mav
-    
+        return self._mav
+
 
     def set_ardupilot_parameter(self, parameter_name: str, parameter_value: float) -> bool:
         """Send a PARAM_SET message and confirm the ACK."""
@@ -131,7 +123,7 @@ class SitlConnection:
         """Apply a mapping of Ardupilot parameters"""
         ardupilot_parameters = (
             {**self.config.fence_params, **self.config.nav_params, **self.config.gps_baseline_params}
-            if mode == "passthrough"
+            if mode == "baseline"
             else {**self.config.fence_params, **self.config.nav_params, **self.config.gps_attack_params}
         )
 

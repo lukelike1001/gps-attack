@@ -122,8 +122,8 @@ class SitlConnection:
     def set_all_ardupilot_parameters(self, mode: str) -> None:
         """Apply a mapping of Ardupilot parameters"""
         ardupilot_parameters = (
-            {**self.config.fence_params, **self.config.nav_params, **self.config.gps_baseline_params}
-            if mode == "baseline"
+            {**self.config.fence_params, **self.config.nav_params, **self.config.gps_passthrough_params}
+            if mode == "passthrough"
             else {**self.config.fence_params, **self.config.nav_params, **self.config.gps_attack_params}
         )
 

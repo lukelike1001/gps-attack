@@ -20,7 +20,7 @@ class ConnectionConfig:
     max_retries: int
     fence_params: Mapping[str, float]
     nav_params: Mapping[str, float]
-    gps_baseline_params: Mapping[str, float]
+    gps_passthrough_params: Mapping[str, float]
     gps_attack_params: Mapping[str, float]
 
     @classmethod
@@ -42,6 +42,6 @@ class ConnectionConfig:
             max_retries=conn["max_retries"],
             fence_params=MappingProxyType(data["fence_params"]),
             nav_params=MappingProxyType(data["nav_params"]),
-            gps_baseline_params=MappingProxyType(data["gps_baseline_params"]),
+            gps_passthrough_params=MappingProxyType(data["gps_passthrough_params"]),
             gps_attack_params=MappingProxyType(data["gps_attack_params"]),
         )

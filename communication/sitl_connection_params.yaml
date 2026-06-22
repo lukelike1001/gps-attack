@@ -19,7 +19,7 @@ nav_params: # NOTE: these should be moved to the `Drone` class
 
 # GPS Docs: https://ardupilot.org/copter/docs/parameters.html#gps-parameters
 # GPS1_TYPE = 1 (AUTO) uses ArduPilot's internal simulated GPS (default)
-gps_baseline_params:
+gps_passthrough_params:
   GPS1_TYPE: 1
   GPS_AUTO_SWITCH: 1
 

@@ -22,6 +22,7 @@ class SoftwareDefinedRadio:
 
         while elapsed_seconds < self.config.attack_duration_seconds:
             elapsed_seconds = time.monotonic() - start_time
+            gps_receiver.sync_position_and_velocity_to_sitl(connection)
             spoofed_position = self.attack.compute_spoofed_position(gps_receiver, elapsed_seconds)
             spoofed_velocity = self.attack.compute_spoofed_velocity(gps_receiver, elapsed_seconds)
             self.send_gps_input(gps_receiver, spoofed_position, spoofed_velocity, connection)

@@ -6,8 +6,10 @@ terrain/
 # QGroundControl (can't redistribute)
 QGroundControl-x86_64.AppImage
 
-# pycache
+# Python build files
 **/__pycache__/
+.coverage
+gps_attack.egg-info/
 
 # Temporary SITL/MAVProxy runtime artifacts
 eeprom.bin

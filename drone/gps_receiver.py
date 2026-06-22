@@ -2,6 +2,8 @@ from communication.sitl_connection import SitlConnection
 from pathlib import Path
 import yaml
 
+import sys
+
 GPS_RECEIVER_CONFIG_PATH = Path(__file__).parent / "configs" / "gps_receiver_params.yaml"
 
 class GpsReceiver:
@@ -80,6 +82,12 @@ class GpsReceiver:
         msg = connection.mav.recv_match(type="GLOBAL_POSITION_INT", blocking=False)
         
         if msg is None:
+            return None
+        
+        # IMPORTANT: Don't remove this "Null Island" fix.
+        if msg.lat == 0 and msg.lon == 0:
+            # "Null Island": the EKF hasn't ingested a GPS fix yet and has
+            # no origin set, so GLOBAL_POSITION_INT reports (0, 0).
             return None
 
         norm_lat, norm_lon, norm_alt = self.normalize_position(msg.lat, msg.lon, msg.alt)

@@ -1,4 +1,9 @@
-attack_params:
-  type: "drift"
-  drift_rate_lat: 1.0e-5
-  drift_rate_lon: 1.0e-5
+type: "drift"
+
+canberra:
+  drift_rate_lat: 0
+  drift_rate_lon: 0.03
+
+ornl:
+  drift_rate_lat: 0.05
+  drift_rate_lon: 0

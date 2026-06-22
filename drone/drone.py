@@ -4,13 +4,20 @@ from drone.gps_receiver import GpsReceiver
 
 class Drone:
 
-    def __init__(self, compass: Compass, imu: InertialMeasurementUnit,
-                 gps_receiver: GpsReceiver):
-        self.compass = compass
-        self.imu = imu
-        self.gps_receiver = gps_receiver
+    def __init__(self):
+        """
+        Purpose: Initialize the drone's hardware components.
+
+        Note: These aren't real hardware parts, but rather software
+        representations of them.
+        """
+        self.compass = Compass()
+        self.imu = InertialMeasurementUnit()
+        self.gps_receiver = GpsReceiver()
         pass
 
-    def set_performance_specifications(self):
-        # we set the ascent rate, descent rate, and so on...
-        pass
+
+    def get_gps_receiver(self):
+        """Getter method for the drone's GPS receiver"""
+        return self.gps_receiver
+    

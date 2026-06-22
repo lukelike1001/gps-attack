@@ -1,12 +1,22 @@
 from attack.gps_attack import GpsAttack
-from pathlib import Path
 from drone.gps_receiver import GpsReceiver
 
 class PassthroughAttack(GpsAttack):
     ATTACK_TYPE = "passthrough"
 
+    def __init__(self, attack_type: str, spawn_location: str):
+        pass
+
+
     def compute_spoofed_position(
             self, gps_receiver: GpsReceiver, elapsed_seconds: float
     ) -> tuple[float, float, float]:
         """Given a drone and the elapsed time, return the coordinates without any spoofing."""
-        return (gps_receiver.lat, gps_receiver.lon, gps_receiver.alt)
+        return gps_receiver.get_position()
+    
+
+    def compute_spoofed_velocity(
+            self, gps_receiver: GpsReceiver, elapsed_seconds: float
+    ) -> tuple[float, float, float]:
+        """By definition, passthrough does not affect the drone's velocity"""
+        return gps_receiver.get_velocity()

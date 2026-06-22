@@ -1,15 +1,14 @@
 from attack.gps_attack import GpsAttack
-from pathlib import Path
 from drone.gps_receiver import GpsReceiver
 
 class DriftAttack(GpsAttack):
     ATTACK_TYPE = "drift"
 
-    def __init__(self, config_path: Path):
-        self._from_yaml(config_path)
-        self._verify_attack_type()
+    def __init__(self, attack_type: str, spawn_location: str):
+        self._from_yaml(attack_type, spawn_location)
         self.drift_rate_lat = self.config["drift_rate_lat"]
         self.drift_rate_lon = self.config["drift_rate_lon"]
+
 
     def compute_spoofed_position(
             self, gps_receiver: GpsReceiver, elapsed_seconds: float
@@ -21,3 +20,10 @@ class DriftAttack(GpsAttack):
             gps_receiver.lon + self.drift_rate_lon * elapsed_seconds,
             gps_receiver.alt,
         )
+    
+
+    def compute_spoofed_velocity(
+            self, gps_receiver: GpsReceiver, elapsed_seconds: float
+    ) -> tuple[float, float, float]:
+        """The drift attack does not affect the drone's velocity"""
+        return gps_receiver.get_velocity()

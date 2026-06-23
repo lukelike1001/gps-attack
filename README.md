@@ -14,31 +14,55 @@ yaw, magnetometer, and HDOP compared to a baseline flight.
 
 ```
 gps-attack/
-├── docker/
-│   ├── Dockerfile              Two-stage build: SITL builder → lightweight runtime
-│   ├── entrypoint.sh           Starts sim_vehicle.py with env-derived port flags
-│   └── docker.env              All tunable Docker values (branch, ports)
-├── plans/
-│   ├── canberra.plan           QGroundControl waypoint mission + geofence (Canberra, AU)
-│   └── ornl.plan               QGroundControl waypoint mission + geofence (ORNL, TN)
-├── sim/
-│   ├── scenario_params.yaml    Tunable SITL scenario parameter values
-│   └── load_scenario.py        Sets ArduPilot scenario parameters via MAVLink
 ├── attack/
-│   └── gps_hook.py             GPS_INPUT injection hook (REPLAY-01)
+│   ├── presets/                Per-attack, per-location YAML configs
+│   ├── gps_attack.py           Abstract base class for all attack types
+│   ├── passthrough_attack.py   No spoofing; passes real position through
+│   ├── static_attack.py        Holds drone at a fixed fabricated coordinate
+│   ├── drift_attack.py         Gradually shifts position at a configured rate
+│   ├── dynamic_attack.py       Activates spoof after reaching a target altitude
+│   ├── fabric_attack.py        Shared base for attacks that use a fixed fabric coordinate
+│   └── replay_attack.py        (WIP)
+├── communication/
+│   ├── sitl_connection.py      MAVLink connection + ArduPilot parameter management
+│   ├── sitl_connection_config.py
+│   └── sitl_connection_params.yaml
+├── drone/
+│   ├── configs/
+│   │   └── gps_receiver_params.yaml   Signal quality + normalization constants
+│   ├── drone.py                Composes GPS receiver, IMU, compass, and clock
+│   ├── gps_receiver.py         Stores position/velocity; syncs from GLOBAL_POSITION_INT
+│   ├── imu.py
+│   ├── compass.py
+│   └── clock.py
+├── spoofer/
+│   ├── sdr.py                  Drives the GPS_INPUT send loop for the attack duration
+│   ├── sdr_config.py
+│   └── sdr_params.yaml
+├── simulation/
+│   └── run_simulation.py       Entry point; wires all components together
+├── plans/
+│   ├── ornl.plan               QGroundControl waypoint mission + geofence (ORNL, TN)
+│   ├── canberra.plan           QGroundControl waypoint mission + geofence (Canberra, AU)
+│   └── spawn_point_lookup.yaml Maps spawn-location names to GPS coordinates
+├── tests/
+│   ├── attack/                 Unit tests for each attack class
+│   ├── communication/          Unit tests for SitlConnection
+│   └── drone/                  Unit tests for GpsReceiver
 ├── analysis/
-│   └── plot_telemetry.py       .bin log extraction + comparison plots (PLOT-01)
-├── logs/                       .bin flight logs land here (bind-mounted into container)
-├── docker-compose.yml          Single-command container orchestration
-├── requirements.txt            Python project dependencies
-└── DESIGN_PRACTICES.md
+│   └── plot_telemetry.py       .bin log extraction and comparison plots
+├── docs/
+│   └── hakani2026evaluation.pdf
+├── logs/                       ArduPilot .bin DataFlash logs
+├── pyproject.toml
+└── requirements.txt
 ```
 
 ---
 
 ## Local Installation
 
-Tested on Ubuntu 22.04. All commands run from the repo root unless noted. You only need to run these steps once to c
+Tested on Ubuntu 22.04. All commands run from the repo root unless noted. The local dependencies only need to set up once regardless of how many GPS attack simulations are run later.
 
 ### Step 1: Clone and build ArduPilot SITL
 
@@ -122,15 +146,17 @@ fi
 ./run_simulation.sh --attack-type dynamic --spawn-location canberra
 ```
 
-Run the script, then open QGroundControl with the matching `.plan` file. Then, arm the flight and start the mission to run the selected mission.
+Run the script, then open QGroundControl with the matching `.plan` file. Then, arm the flight and start the mission to run the selected mission. You are also highly encouraged to read the detailed wakthrough in the next section to better understand how the repo works.
 
 ---
 
-## AUTO-01: Clean waypoint mission
+## Detailed Walkthrough: ORNL Passthrough Attack
+
+This section describes how to use `run_simulation.py` rather than the quickstart script, showing what happens behind-the-scenes to set up and run the GPS spoofing attack. To demonstrate this, we will use a passthrough case (a benign attack that doesn't spoof neither the position nor velocity) set with a spawn point at ORNL.
 
 ### Step 1: Start SITL
 
-Open a dedicated terminal in the repo root. `sim_vehicle.py` is an executable installed on your PATH by the prereqs script. Do not prefix it with `python`. SITL binds two MAVLink outputs: UDP 14550 for QGroundControl, UDP 14551 for the Python scripts.
+Open a dedicated terminal in the repo root. `sim_vehicle.py` is an executable installed on your PATH by the prereqs script. **Do not prefix it with `python`.** SITL binds two MAVLink outputs: UDP 14550 for QGroundControl, UDP 14551 for the Python scripts.
 
 ```bash
 sim_vehicle.py -v ArduCopter \

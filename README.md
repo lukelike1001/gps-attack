@@ -1,12 +1,6 @@
 # gps-attack
 
-Replication of Hakani et al., "Evaluation and Telemetry-Based Detection of GPS Spoofing Effects
-on UAV Navigation Using Software-Defined Radio," *Scientific Reports*, May 2026.
-
-A drone flies an autonomous waypoint mission in ArduPilot SITL. Mid-flight, a Python hook
-injects fake GPS coordinates via MAVLink `GPS_INPUT` messages. The drone deviates, breaches
-a geofence, and triggers automatic RTL. Telemetry logs capture anomalies in barometric altitude,
-yaw, magnetometer, and HDOP compared to a baseline flight.
+Toolbox for developing GPS spoofing attacks using ArduPilot SITL. The Python-based SDR injects fake GPS coordinates via MAVLink `GPS_INPUT` messages to trigger geofence breaches.
 
 ---
 

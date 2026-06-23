@@ -49,10 +49,6 @@ gps-attack/
 │   ├── attack/                 Unit tests for each attack class
 │   ├── communication/          Unit tests for SitlConnection
 │   └── drone/                  Unit tests for GpsReceiver
-├── analysis/
-│   └── plot_telemetry.py       .bin log extraction and comparison plots
-├── docs/
-│   └── hakani2026evaluation.pdf
 ├── logs/                       ArduPilot .bin DataFlash logs
 ├── pyproject.toml
 └── requirements.txt

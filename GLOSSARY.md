@@ -1,6 +1,6 @@
 # gps-attack Glossary
 
-This glossary feautres drone terminology to help users better understand the project and the field of GPS spoofing attacks.
+This glossary features drone terminology to help users better understand the project and the field of GPS spoofing attacks.
 
 ## [Ardupilot](https://github.com/ardupilot/ardupilot)
 A popular, open source autopilot firmware system. We use the **Arducopter** option in this repository, as we're testing on a real-life hardware Aurelia X6 Hexacopter in parallel with this simulation tool.
@@ -14,7 +14,7 @@ The change in frequency of a wave due to a reflector moving towards or away from
 GPS receivers rely on calculating the Doppler shift of received signals to determine the drone's velocity and to help lock onto true satellites. An accurate GPS spoofing attack must accurately calculate a plausible Doppler shift. Bad spoofs (e.g., telling the drone it's flying at supersonic speeds) can be detected.
 
 ## Ephemeris
-A data file that provides the predicted positions and velocities of astronomical objects. In GPS spoofing attacks, a broadcast ephermis file (e.g., `brdc3540.14n` from NASA CDDIS) is used to provide the spatial coordinates of GPS satellites and sythesize realistic satellite signals.
+A data file that provides the predicted positions and velocities of astronomical objects. In GPS spoofing attacks, a broadcast ephemeris file (e.g., `brdc3540.14n` from NASA CDDIS) is used to provide the spatial coordinates of GPS satellites and synthesize realistic satellite signals.
 
 ## [Extended Kalman Filter (EKF)](https://ardupilot.org/copter/docs/common-apm-navigation-extended-kalman-filter-overview.html)
 An algorithm is used to estimate vehicle position, velocity and angular orientation based on rate gyroscopes, accelerometer, compass, GPS, airspeed and barometric pressure measurements.
@@ -55,7 +55,7 @@ Broadcasts both civilian (C/A, L1C) and encrypted military (P/Y, M) codes
 Broadcasts legacy military codes and the modernized civilian L2C code
 
 ### L3: 1381.05 MHz
-**Not** for civilian usage. Reserved by the US Federal Goverment.
+**Not** for civilian usage. Reserved by the US Federal Government.
 
 ### L5: 1176.45 MHz
 Modern band over the legacy L1 band

@@ -16,13 +16,13 @@ The same lines of code should not appear in multiple different places in the sam
 Classes should avoid inappropriate intimacy by collaborating via method calls. A class should not directly access the instance variables of another class. Do not use public instance variables or global variables.
 
 ## DESIGN-06 Code Formatting
-Code should follow course formatting conventions, including things that cannot be automatically checked, especially the Java naming conventions.
+Code should follow course formatting conventions, including things that cannot be automatically checked, especially the Python naming conventions.
 
 ## DESIGN-07 Tightly Scoped Methods
 Each method should be small with a single-purpose. Long methods should be decomposed into smaller pieces of functionality. Long methods are a code smell.
 
 ## DESIGN-08 Comments
-Follow Javadoc conventions for commenting on public classes, interfaces, methods, and packages. In-line comments should be used judiciously; self-explanatory code is preferred. See Internal Documentation.
+Follow Python docstring conventions for commenting on public classes, interfaces, methods, and packages. In-line comments should be used judiciously; self-explanatory code is preferred.
 
 ## DESIGN-09 Model View Separation
 GUIs should be separate from the model; this requires clear articulation about what information (including errors) needs to be communicated between each part.
@@ -34,21 +34,21 @@ Key implementation details must be hidden such that they can be changed without 
 Create abstractions that capture commonality (superclasses or interfaces) and encourage variability (subclasses or implementors). Build your classes to depend on the abstractions (superclasses and interfaces) rather than implementations (concrete subclasses).
 
 ## DESIGN-12 Automated Testing
-Your program must be tested using JUnit (with assertions both for typical situations and possible thrown Exceptions) to verify it works as intended. Tests should be written in separate classes and methods that follow these naming standards. These tests should be a mix of:
+Your program must be tested using pytest (with assertions both for typical situations and possible thrown Exceptions) to verify it works as intended. Tests should be written in separate classes and methods that follow these naming standards. These tests should be a mix of:
 
     1. Model Tests: tests that test one small unit of functionality
-    2. End-to-End Tests: tests that simulate the user interacting with user interface (e.g., using TestFX)
+    2. End-to-End Tests: tests that simulate the user interacting with user interface
 
 ## DESIGN-13 Programs Should Not Crash
 Build robustness into your program so that it does not crash or hang. Handle errors and provide a reasonable response to exceptional cases so that the user can continue to run the program.
 
 ## DESIGN-14 Handle Errors Using Exception Flows
-Communicate errors in a thoughtful, intentional, manner rather than returning null or other error prone values. Consider using custom Exceptions or Java's Optional.
+Communicate errors in a thoughtful, intentional, manner rather than returning null or other error prone values. Consider using custom exceptions if needed.
 
 ## DESIGN-15 Externalize Configuration
-Move hardcoded values into configuration files, rather than compiled into your program, specifically:
+Move hardcoded values into configuration files (preferably YAML), rather than compiled into your program, specifically:
     1. "magic" values stored as static final constants
-    2. any text displayed in the user interface, by using resource property files (the String.format() method allows you to make any complex string a single value)
+    2. any text displayed in the user interface, by using resource property files
     3. any styles (colors, font, borders, etc.) used to customize the user interface, by using CSS files
 
 ## DESIGN-16 No Dead Code
@@ -58,15 +58,16 @@ Your project should not include unused variables, methods, or classes. Do not co
 For classes and values that should not change after they are instantiated, explicitly restrict them from changing using language features. Consider using Enumerated types or Records.
 
 ## DESIGN-18 APIs
-Provide well-defined Application Programming Interfaces (APIs) for logical parts of your project. Each public API class and method should have complete Javadoc comments, especially interfaces and abstract classes to show their intended use. Each API package must include a file called package-info.java that includes comments to describe the API's Design Goals and Contracts.
+Provide well-defined Application Programming Interfaces (APIs) for logical parts of your project. Each public API class and method should have complete docstring comments, especially interfaces and abstract classes to show their intended use. Each API package must include a file called pyproject.toml that includes comments to describe the API's Design Goals and Contracts.
 
 ## DESIGN-19 Apply Design Patterns
 Define and describe your system design using Design Patterns.
 Your classes should follow the naming conventions of the design pattern you are applying (i.e., a factory class from the Factory pattern should be named with the suffix Factory).
-Document your Design Patterns where appropriate, such as Javadoc comments and the project DESIGN document.
+
+Document your Design Patterns where appropriate, such as docstring comments and the project DESIGN document.
 
 ## DESIGN-20 Reflection for Instantiation from Strings
-Use reflection whenever you need to create objects or call methods from Strings rather than hardcoding conditionals or a mapping between the String literal and your object.
+Use reflection whenever you need to create objects or call methods from strings rather than hardcoding conditionals or a mapping between the string literal and your object.
 
 ## DESIGN-21 Logging
-Use Log4j2, instead of println() statements to output messages. A message must be generated any time an Exception is thrown that is saved to one or more files within the folder log. Messages labeled as DEBUG or INFO can go to the console (standard out) or a file.
+Use the built-in Python `logging` module, instead of print() statements to output messages. A message must be generated any time an Exception is thrown that is saved to one or more files within the folder log.
